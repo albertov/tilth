@@ -10,6 +10,9 @@ use clap_complete::Shell;
 #[derive(Parser)]
 #[command(name = "tilth", version, about)]
 struct Cli {
+    #[command(subcommand)]
+    command: Option<Command>,
+
     /// File path, symbol name, glob pattern, or text to search.
     query: Option<String>,
 
@@ -44,11 +47,16 @@ struct Cli {
     /// Print shell completions for the given shell.
     #[arg(long, value_name = "SHELL")]
     completions: Option<Shell>,
+}
 
-    /// Install tilth into an MCP host config.
-    /// Supported: claude-code, cursor, windsurf, claude-desktop
-    #[arg(long, value_name = "HOST")]
-    install: Option<String>,
+#[derive(clap::Subcommand)]
+enum Command {
+    /// Install tilth into an MCP host's config.
+    /// Supported hosts: claude-code, cursor, windsurf, vscode, claude-desktop
+    Install {
+        /// MCP host to configure.
+        host: String,
+    },
 }
 
 fn main() {
@@ -60,11 +68,15 @@ fn main() {
         return;
     }
 
-    // Install mode: write MCP config for a host
-    if let Some(ref host) = cli.install {
-        if let Err(e) = tilth::install::run(host) {
-            eprintln!("install error: {e}");
-            process::exit(1);
+    // Subcommands
+    if let Some(cmd) = cli.command {
+        match cmd {
+            Command::Install { ref host } => {
+                if let Err(e) = tilth::install::run(host) {
+                    eprintln!("install error: {e}");
+                    process::exit(1);
+                }
+            }
         }
         return;
     }

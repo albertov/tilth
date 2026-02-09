@@ -4,7 +4,13 @@ use std::path::PathBuf;
 use serde_json::{json, Value};
 
 /// Supported MCP hosts.
-const SUPPORTED_HOSTS: &[&str] = &["claude-code", "cursor", "windsurf", "claude-desktop"];
+const SUPPORTED_HOSTS: &[&str] = &[
+    "claude-code",
+    "cursor",
+    "windsurf",
+    "vscode",
+    "claude-desktop",
+];
 
 /// Write MCP config for the given host, preserving existing servers.
 pub fn run(host: &str) -> Result<(), String> {
@@ -53,6 +59,7 @@ fn config_path_for(host: &str) -> Result<PathBuf, String> {
         "claude-code" => Ok(PathBuf::from(".mcp.json")),
         "cursor" => Ok(PathBuf::from(".cursor/mcp.json")),
         "windsurf" => Ok(PathBuf::from(".windsurf/mcp.json")),
+        "vscode" => Ok(PathBuf::from(".vscode/mcp.json")),
         "claude-desktop" => claude_desktop_path(),
         _ => Err(format!(
             "unknown host: {host}. Supported: {}",
