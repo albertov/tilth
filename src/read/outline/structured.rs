@@ -53,9 +53,16 @@ fn walk_json(
                     serde_json::Value::Object(inner) => {
                         if depth + 1 >= max_depth {
                             let keys: Vec<&String> = inner.keys().take(5).collect();
-                            let key_list = keys.iter().map(|k| k.as_str()).collect::<Vec<_>>().join(", ");
+                            let key_list = keys
+                                .iter()
+                                .map(|k| k.as_str())
+                                .collect::<Vec<_>>()
+                                .join(", ");
                             let suffix = if inner.len() > 5 { ", ..." } else { "" };
-                            lines.push(format!("{key}: {{{} keys}} [{key_list}{suffix}]", inner.len()));
+                            lines.push(format!(
+                                "{key}: {{{} keys}} [{key_list}{suffix}]",
+                                inner.len()
+                            ));
                         } else {
                             walk_json(val, &full_key, depth + 1, max_depth, max_lines, lines);
                         }
@@ -104,7 +111,10 @@ fn truncate_json_value(v: &serde_json::Value, max: usize) -> String {
         other => other.to_string(),
     };
     if s.len() > max {
-        format!("{}...", crate::types::truncate_str(&s, max.saturating_sub(3)))
+        format!(
+            "{}...",
+            crate::types::truncate_str(&s, max.saturating_sub(3))
+        )
     } else {
         s
     }
@@ -206,5 +216,9 @@ fn walk_toml(
 }
 
 fn key_value_outline(content: &str, max_lines: usize) -> String {
-    content.lines().take(max_lines).collect::<Vec<_>>().join("\n")
+    content
+        .lines()
+        .take(max_lines)
+        .collect::<Vec<_>>()
+        .join("\n")
 }

@@ -1,7 +1,7 @@
 use std::fmt::Write;
 use std::path::Path;
 
-use crate::types::{ViewMode, estimate_tokens};
+use crate::types::{estimate_tokens, ViewMode};
 
 /// Build the standard header line:
 /// `# path/to/file.ts (N lines, ~X.Xk tokens) [mode]`
@@ -28,7 +28,13 @@ pub fn binary_header(path: &Path, byte_len: u64, mime: &str) -> String {
 }
 
 /// Build header for search results.
-pub fn search_header(query: &str, scope: &Path, total: usize, defs: usize, usages: usize) -> String {
+pub fn search_header(
+    query: &str,
+    scope: &Path,
+    total: usize,
+    defs: usize,
+    usages: usize,
+) -> String {
     let parts = match (defs, usages) {
         (0, _) => format!("{total} matches"),
         (d, u) => format!("{total} matches ({d} definitions, {u} usages)"),
@@ -41,7 +47,11 @@ fn format_size(bytes: u64) -> String {
     match bytes {
         b if b < 1024 => format!("{b}B"),
         b if b < 1024 * 1024 => format!("{}KB", b / 1024),
-        b => format!("{}.{}MB", b / (1024 * 1024), (b % (1024 * 1024)) * 10 / (1024 * 1024)),
+        b => format!(
+            "{}.{}MB",
+            b / (1024 * 1024),
+            (b % (1024 * 1024)) * 10 / (1024 * 1024)
+        ),
     }
 }
 

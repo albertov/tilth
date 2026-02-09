@@ -12,7 +12,13 @@ use crate::types::FileType;
 const OUTLINE_CAP: usize = 100; // max outline lines for huge files
 
 /// Generate a smart view based on file type.
-pub fn generate(path: &Path, file_type: FileType, content: &str, buf: &[u8], capped: bool) -> String {
+pub fn generate(
+    path: &Path,
+    file_type: FileType,
+    content: &str,
+    buf: &[u8],
+    capped: bool,
+) -> String {
     let max_lines = if capped { OUTLINE_CAP } else { usize::MAX };
 
     // Test files get special treatment regardless of language

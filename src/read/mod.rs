@@ -10,7 +10,7 @@ use memmap2::Mmap;
 use crate::cache::OutlineCache;
 use crate::error::TilthError;
 use crate::format;
-use crate::types::{FileType, Lang, ViewMode, estimate_tokens};
+use crate::types::{estimate_tokens, FileType, Lang, ViewMode};
 
 const TOKEN_THRESHOLD: u64 = 1_500;
 const FILE_SIZE_CAP: u64 = 500_000; // 500KB
@@ -81,7 +81,12 @@ pub fn read_file(
     // Generated
     if generated::is_generated_by_name(name) || generated::is_generated_by_content(buf) {
         let line_count = memchr::memchr_iter(b'\n', buf).count() as u32 + 1;
-        return Ok(format::file_header(path, byte_len, line_count, ViewMode::Generated));
+        return Ok(format::file_header(
+            path,
+            byte_len,
+            line_count,
+            ViewMode::Generated,
+        ));
     }
 
     let tokens = estimate_tokens(byte_len);
@@ -96,9 +101,7 @@ pub fn read_file(
 
     // Large file → smart view by file type
     let file_type = detect_file_type(path);
-    let mtime = meta
-        .modified()
-        .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+    let mtime = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
 
     let capped = byte_len > FILE_SIZE_CAP;
 
@@ -288,9 +291,7 @@ fn edit_distance(a: &str, b: &str) -> usize {
         curr[0] = i + 1;
         for (j, &cb) in b.iter().enumerate() {
             let cost = usize::from(ca != cb);
-            curr[j + 1] = (prev[j] + cost)
-                .min(prev[j + 1] + 1)
-                .min(curr[j] + 1);
+            curr[j + 1] = (prev[j] + cost).min(prev[j + 1] + 1).min(curr[j] + 1);
         }
         std::mem::swap(&mut prev, &mut curr);
     }
@@ -318,4 +319,3 @@ fn mime_from_ext(path: &Path) -> &'static str {
         _ => "application/octet-stream",
     }
 }
-

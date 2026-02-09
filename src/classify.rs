@@ -8,7 +8,9 @@ pub fn classify(query: &str, scope: &Path) -> QueryType {
     // 1. Glob — check first because globs can contain path separators.
     //    But only if no spaces: real globs don't have spaces, content like "import { X }" does.
     if !query.contains(' ')
-        && query.bytes().any(|b| matches!(b, b'*' | b'?' | b'{' | b'['))
+        && query
+            .bytes()
+            .any(|b| matches!(b, b'*' | b'?' | b'{' | b'['))
     {
         return QueryType::Glob(query.into());
     }
@@ -70,10 +72,22 @@ fn looks_like_filename(query: &str) -> bool {
     // Known extensionless filenames
     matches!(
         query,
-        "README" | "LICENSE" | "Makefile" | "GNUmakefile" | "Dockerfile"
-        | "Containerfile" | "Vagrantfile" | "Rakefile" | "Gemfile"
-        | "Procfile" | "Justfile" | "Taskfile" | "CHANGELOG"
-        | "CONTRIBUTING" | "AUTHORS" | "CODEOWNERS"
+        "README"
+            | "LICENSE"
+            | "Makefile"
+            | "GNUmakefile"
+            | "Dockerfile"
+            | "Containerfile"
+            | "Vagrantfile"
+            | "Rakefile"
+            | "Gemfile"
+            | "Procfile"
+            | "Justfile"
+            | "Taskfile"
+            | "CHANGELOG"
+            | "CONTRIBUTING"
+            | "AUTHORS"
+            | "CODEOWNERS"
     )
 }
 
@@ -106,17 +120,32 @@ mod tests {
     fn glob_patterns() {
         let scope = PathBuf::from(".");
         assert!(matches!(classify("*.test.ts", &scope), QueryType::Glob(_)));
-        assert!(matches!(classify("src/**/*.rs", &scope), QueryType::Glob(_)));
+        assert!(matches!(
+            classify("src/**/*.rs", &scope),
+            QueryType::Glob(_)
+        ));
         assert!(matches!(classify("{a,b}.js", &scope), QueryType::Glob(_)));
     }
 
     #[test]
     fn identifiers() {
         let scope = PathBuf::from(".");
-        assert!(matches!(classify("handleAuth", &scope), QueryType::Symbol(_)));
-        assert!(matches!(classify("handle_auth", &scope), QueryType::Symbol(_)));
-        assert!(matches!(classify("my-component", &scope), QueryType::Symbol(_)));
-        assert!(matches!(classify("AuthService.validate", &scope), QueryType::Symbol(_)));
+        assert!(matches!(
+            classify("handleAuth", &scope),
+            QueryType::Symbol(_)
+        ));
+        assert!(matches!(
+            classify("handle_auth", &scope),
+            QueryType::Symbol(_)
+        ));
+        assert!(matches!(
+            classify("my-component", &scope),
+            QueryType::Symbol(_)
+        ));
+        assert!(matches!(
+            classify("AuthService.validate", &scope),
+            QueryType::Symbol(_)
+        ));
         assert!(matches!(classify("$ref", &scope), QueryType::Symbol(_)));
         assert!(matches!(classify("@types", &scope), QueryType::Symbol(_)));
     }
@@ -125,8 +154,14 @@ mod tests {
     fn content_queries() {
         let scope = PathBuf::from(".");
         assert!(matches!(classify("404", &scope), QueryType::Content(_)));
-        assert!(matches!(classify("TODO: fix this", &scope), QueryType::Content(_)));
-        assert!(matches!(classify("import { X }", &scope), QueryType::Content(_)));
+        assert!(matches!(
+            classify("TODO: fix this", &scope),
+            QueryType::Content(_)
+        ));
+        assert!(matches!(
+            classify("import { X }", &scope),
+            QueryType::Content(_)
+        ));
     }
 
     #[test]

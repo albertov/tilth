@@ -18,7 +18,12 @@ const EARLY_QUIT_THRESHOLD: usize = MAX_MATCHES * 3;
 const MAX_SEARCH_FILE_SIZE: u64 = 500_000;
 
 /// Content search using ripgrep crates. Literal by default, regex if `is_regex`.
-pub fn search(pattern: &str, scope: &Path, is_regex: bool, context: Option<&Path>) -> Result<SearchResult, TilthError> {
+pub fn search(
+    pattern: &str,
+    scope: &Path,
+    is_regex: bool,
+    context: Option<&Path>,
+) -> Result<SearchResult, TilthError> {
     let matcher = if is_regex {
         RegexMatcher::new(pattern)
     } else {
@@ -93,7 +98,9 @@ pub fn search(pattern: &str, scope: &Path, is_regex: bool, context: Option<&Path
 
             if !file_matches.is_empty() {
                 total_found.fetch_add(file_matches.len(), Ordering::Relaxed);
-                let mut all = matches.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+                let mut all = matches
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 all.extend(file_matches);
             }
 
@@ -106,7 +113,9 @@ pub fn search(pattern: &str, scope: &Path, is_regex: bool, context: Option<&Path
     });
 
     let total = total_found.load(Ordering::Relaxed);
-    let mut all_matches = matches.into_inner().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut all_matches = matches
+        .into_inner()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
 
     rank::sort(&mut all_matches, pattern, scope, context);
     all_matches.truncate(MAX_MATCHES);
@@ -120,4 +129,3 @@ pub fn search(pattern: &str, scope: &Path, is_regex: bool, context: Option<&Path
         usages: total,
     })
 }
-

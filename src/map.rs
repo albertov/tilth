@@ -11,13 +11,8 @@ use crate::types::{estimate_tokens, FileType};
 /// Generate a structural codebase map.
 /// Code files show symbol names from outline cache.
 /// Non-code files show name + token estimate.
-#[must_use] 
-pub fn generate(
-    scope: &Path,
-    depth: usize,
-    budget: Option<u64>,
-    cache: &OutlineCache,
-) -> String {
+#[must_use]
+pub fn generate(scope: &Path, depth: usize, budget: Option<u64>, cache: &OutlineCache) -> String {
     let mut tree: BTreeMap<PathBuf, Vec<FileEntry>> = BTreeMap::new();
 
     // hidden + git_ignore are defaults, explicit for clarity
@@ -42,7 +37,8 @@ pub fn generate(
         }
 
         let parent = rel.parent().unwrap_or(Path::new("")).to_path_buf();
-        let name = rel.file_name()
+        let name = rel
+            .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("")
             .to_string();
@@ -69,9 +65,11 @@ pub fn generate(
             _ => None,
         };
 
-        tree.entry(parent)
-            .or_default()
-            .push(FileEntry { name, symbols, tokens });
+        tree.entry(parent).or_default().push(FileEntry {
+            name,
+            symbols,
+            tokens,
+        });
     }
 
     let mut out = format!("# Map: {} (depth {})\n", scope.display(), depth);
@@ -114,9 +112,20 @@ fn extract_symbol_names(outline: &str) -> Vec<String> {
 
 fn find_symbol_start(line: &str) -> Option<usize> {
     let kinds = [
-        "fn ", "struct ", "enum ", "trait ", "impl ", "mod ",
-        "class ", "interface ", "type ", "const ", "static ",
-        "function ", "method ", "def ",
+        "fn ",
+        "struct ",
+        "enum ",
+        "trait ",
+        "impl ",
+        "mod ",
+        "class ",
+        "interface ",
+        "type ",
+        "const ",
+        "static ",
+        "function ",
+        "method ",
+        "def ",
     ];
     for kind in &kinds {
         if let Some(pos) = line.find(kind) {
@@ -140,10 +149,9 @@ fn format_tree(
     out: &mut String,
 ) {
     // Collect subdirectories that have entries
-    let mut subdirs: Vec<&PathBuf> = tree.keys()
-        .filter(|k| {
-            k.parent() == Some(dir) && *k != dir
-        })
+    let mut subdirs: Vec<&PathBuf> = tree
+        .keys()
+        .filter(|k| k.parent() == Some(dir) && *k != dir)
         .collect();
     subdirs.sort();
 
@@ -172,9 +180,7 @@ fn format_tree(
 
     // Recurse into subdirectories
     for subdir in subdirs {
-        let dir_name = subdir.file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("?");
+        let dir_name = subdir.file_name().and_then(|n| n.to_str()).unwrap_or("?");
         let _ = writeln!(out, "{prefix}{dir_name}/");
         format_tree(tree, subdir, indent + 1, out);
     }

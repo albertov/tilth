@@ -12,8 +12,7 @@ pub fn outline(buf: &[u8], max_lines: usize) -> String {
         line_num += 1;
 
         // Find end of current line
-        let line_end = memchr::memchr(b'\n', &buf[pos..])
-            .map_or(buf.len(), |i| pos + i);
+        let line_end = memchr::memchr(b'\n', &buf[pos..]).map_or(buf.len(), |i| pos + i);
 
         let line = &buf[pos..line_end];
 

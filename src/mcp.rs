@@ -72,7 +72,11 @@ struct JsonRpcError {
     message: String,
 }
 
-fn handle_request(req: &JsonRpcRequest, cache: &OutlineCache, session: &Session) -> JsonRpcResponse {
+fn handle_request(
+    req: &JsonRpcRequest,
+    cache: &OutlineCache,
+    session: &Session,
+) -> JsonRpcResponse {
     match req.method.as_str() {
         "initialize" => JsonRpcResponse {
             jsonrpc: "2.0",
@@ -143,27 +147,42 @@ pub(crate) fn dispatch_tool(
 }
 
 fn tool_read(args: &Value, cache: &OutlineCache, session: &Session) -> Result<String, String> {
-    let path_str = args.get("path").and_then(|v| v.as_str())
+    let path_str = args
+        .get("path")
+        .and_then(|v| v.as_str())
         .ok_or("missing required parameter: path")?;
     let path = PathBuf::from(path_str);
     let section = args.get("section").and_then(|v| v.as_str());
-    let full = args.get("full").and_then(serde_json::Value::as_bool).unwrap_or(false);
+    let full = args
+        .get("full")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false);
     let budget = args.get("budget").and_then(serde_json::Value::as_u64);
 
     session.record_read(&path);
-    let output = crate::read::read_file(&path, section, full, cache)
-        .map_err(|e| e.to_string())?;
+    let output = crate::read::read_file(&path, section, full, cache).map_err(|e| e.to_string())?;
 
     Ok(apply_budget(output, budget))
 }
 
 fn tool_search(args: &Value, cache: &OutlineCache, session: &Session) -> Result<String, String> {
-    let query = args.get("query").and_then(|v| v.as_str())
+    let query = args
+        .get("query")
+        .and_then(|v| v.as_str())
         .ok_or("missing required parameter: query")?;
     let scope = resolve_scope(args);
-    let kind = args.get("kind").and_then(|v| v.as_str()).unwrap_or("symbol");
-    let expand = args.get("expand").and_then(serde_json::Value::as_u64).unwrap_or(0) as usize;
-    let context_path = args.get("context").and_then(|v| v.as_str()).map(PathBuf::from);
+    let kind = args
+        .get("kind")
+        .and_then(|v| v.as_str())
+        .unwrap_or("symbol");
+    let expand = args
+        .get("expand")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0) as usize;
+    let context_path = args
+        .get("context")
+        .and_then(|v| v.as_str())
+        .map(PathBuf::from);
     let context = context_path.as_deref();
     let budget = args.get("budget").and_then(serde_json::Value::as_u64);
 
@@ -176,27 +195,36 @@ fn tool_search(args: &Value, cache: &OutlineCache, session: &Session) -> Result<
                 .map_err(|e| e.to_string())?;
             crate::search::format_content_result(&result, cache)
         }
-        _ => return Err(format!("unknown search kind: {kind}. Use: symbol, content, regex")),
-    }.map_err(|e| e.to_string())?;
+        _ => {
+            return Err(format!(
+                "unknown search kind: {kind}. Use: symbol, content, regex"
+            ))
+        }
+    }
+    .map_err(|e| e.to_string())?;
 
     Ok(apply_budget(output, budget))
 }
 
 fn tool_files(args: &Value, cache: &OutlineCache) -> Result<String, String> {
-    let pattern = args.get("pattern").and_then(|v| v.as_str())
+    let pattern = args
+        .get("pattern")
+        .and_then(|v| v.as_str())
         .ok_or("missing required parameter: pattern")?;
     let scope = resolve_scope(args);
     let budget = args.get("budget").and_then(serde_json::Value::as_u64);
 
-    let output = crate::search::search_glob(pattern, &scope, cache)
-        .map_err(|e| e.to_string())?;
+    let output = crate::search::search_glob(pattern, &scope, cache).map_err(|e| e.to_string())?;
 
     Ok(apply_budget(output, budget))
 }
 
 fn tool_map(args: &Value, cache: &OutlineCache, session: &Session) -> Result<String, String> {
     let scope = resolve_scope(args);
-    let depth = args.get("depth").and_then(serde_json::Value::as_u64).unwrap_or(3) as usize;
+    let depth = args
+        .get("depth")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(3) as usize;
     let budget = args.get("budget").and_then(serde_json::Value::as_u64);
 
     session.record_map();
@@ -204,7 +232,10 @@ fn tool_map(args: &Value, cache: &OutlineCache, session: &Session) -> Result<Str
 }
 
 fn tool_session(args: &Value, session: &Session) -> Result<String, String> {
-    let action = args.get("action").and_then(|v| v.as_str()).unwrap_or("summary");
+    let action = args
+        .get("action")
+        .and_then(|v| v.as_str())
+        .unwrap_or("summary");
     match action {
         "reset" => {
             session.reset();
@@ -216,8 +247,11 @@ fn tool_session(args: &Value, session: &Session) -> Result<String, String> {
 
 /// Canonicalize scope path, falling back to the raw path if canonicalization fails.
 fn resolve_scope(args: &Value) -> PathBuf {
-    let raw: PathBuf = args.get("scope").and_then(|v| v.as_str())
-        .unwrap_or(".").into();
+    let raw: PathBuf = args
+        .get("scope")
+        .and_then(|v| v.as_str())
+        .unwrap_or(".")
+        .into();
     raw.canonicalize().unwrap_or(raw)
 }
 
@@ -232,7 +266,11 @@ fn apply_budget(output: String, budget: Option<u64>) -> String {
 // MCP tool call handler
 // ---------------------------------------------------------------------------
 
-fn handle_tool_call(req: &JsonRpcRequest, cache: &OutlineCache, session: &Session) -> JsonRpcResponse {
+fn handle_tool_call(
+    req: &JsonRpcRequest,
+    cache: &OutlineCache,
+    session: &Session,
+) -> JsonRpcResponse {
     let params = &req.params;
     let tool_name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
     let args = params.get("arguments").unwrap_or(&Value::Null);

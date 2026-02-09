@@ -71,8 +71,11 @@ fn node_to_entry(
 
     let (kind, name, signature) = match kind_str {
         // Functions
-        "function_declaration" | "function_definition" | "function_item"
-        | "method_definition" | "method_declaration" => {
+        "function_declaration"
+        | "function_definition"
+        | "function_item"
+        | "method_definition"
+        | "method_declaration" => {
             let name = find_child_text(node, "name", lines)
                 .or_else(|| find_child_text(node, "identifier", lines))
                 .unwrap_or_else(|| "<anonymous>".into());
@@ -88,46 +91,39 @@ fn node_to_entry(
             (OutlineKind::Class, name, None)
         }
         "struct_item" | "struct_declaration" => {
-            let name = find_child_text(node, "name", lines)
-                .unwrap_or_else(|| "<anonymous>".into());
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
             (OutlineKind::Struct, name, None)
         }
 
         // Interfaces & types
         "interface_declaration" | "type_alias_declaration" => {
-            let name = find_child_text(node, "name", lines)
-                .unwrap_or_else(|| "<anonymous>".into());
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
             (OutlineKind::Interface, name, None)
         }
         "type_item" => {
-            let name = find_child_text(node, "name", lines)
-                .unwrap_or_else(|| "<anonymous>".into());
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
             (OutlineKind::TypeAlias, name, None)
         }
 
         // Enums
         "enum_item" | "enum_declaration" => {
-            let name = find_child_text(node, "name", lines)
-                .unwrap_or_else(|| "<anonymous>".into());
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
             (OutlineKind::Enum, name, None)
         }
 
         // Impl blocks (Rust)
         "impl_item" => {
-            let name = find_child_text(node, "type", lines)
-                .unwrap_or_else(|| "<impl>".into());
+            let name = find_child_text(node, "type", lines).unwrap_or_else(|| "<impl>".into());
             (OutlineKind::Module, format!("impl {name}"), None)
         }
 
         // Constants and variables
         "const_item" | "static_item" => {
-            let name = find_child_text(node, "name", lines)
-                .unwrap_or_else(|| "<const>".into());
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<const>".into());
             (OutlineKind::Constant, name, None)
         }
         "lexical_declaration" | "variable_declaration" => {
-            let name = first_identifier_text(node, lines)
-                .unwrap_or_else(|| "<var>".into());
+            let name = first_identifier_text(node, lines).unwrap_or_else(|| "<var>".into());
             (OutlineKind::Variable, name, None)
         }
 
@@ -145,8 +141,7 @@ fn node_to_entry(
 
         // Module declarations
         "mod_item" | "module" => {
-            let name = find_child_text(node, "name", lines)
-                .unwrap_or_else(|| "<module>".into());
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<module>".into());
             (OutlineKind::Module, name, None)
         }
 
@@ -154,8 +149,10 @@ fn node_to_entry(
     };
 
     // Collect children for classes, impls, modules
-    let children = if matches!(kind, OutlineKind::Class | OutlineKind::Struct | OutlineKind::Module)
-        && depth < 1
+    let children = if matches!(
+        kind,
+        OutlineKind::Class | OutlineKind::Struct | OutlineKind::Module
+    ) && depth < 1
     {
         collect_children(node, lines, lang, depth + 1)
     } else {
@@ -231,8 +228,7 @@ fn extract_signature(node: tree_sitter::Node, lines: &[&str]) -> String {
 
 /// Find a named child and return its text.
 fn find_child_text(node: tree_sitter::Node, field: &str, lines: &[&str]) -> Option<String> {
-    node.child_by_field_name(field)
-        .map(|n| node_text(n, lines))
+    node.child_by_field_name(field).map(|n| node_text(n, lines))
 }
 
 /// Get the text of a node, truncated to the first line.
@@ -394,18 +390,30 @@ fn extract_import_source(text: &str) -> String {
 
     // Rust: `use foo::bar` → `foo::bar`
     if let Some(rest) = trimmed.strip_prefix("use ") {
-        return rest.split('{').next().unwrap_or(rest).trim().trim_end_matches("::").to_string();
+        return rest
+            .split('{')
+            .next()
+            .unwrap_or(rest)
+            .trim()
+            .trim_end_matches("::")
+            .to_string();
     }
 
     // JS/TS: `import ... from "source"` or `import "source"`
     if trimmed.starts_with("import") {
         if let Some(from_pos) = trimmed.find("from ") {
             let source = &trimmed[from_pos + 5..];
-            return source.trim().trim_matches(|c| c == '"' || c == '\'' || c == ';').to_string();
+            return source
+                .trim()
+                .trim_matches(|c| c == '"' || c == '\'' || c == ';')
+                .to_string();
         }
         // Direct import: `import "source"`
         let after = trimmed.strip_prefix("import ").unwrap_or("");
-        return after.trim().trim_matches(|c| c == '"' || c == '\'' || c == ';').to_string();
+        return after
+            .trim()
+            .trim_matches(|c| c == '"' || c == '\'' || c == ';')
+            .to_string();
     }
 
     // Python: `from module import ...` or `import module`
@@ -418,7 +426,11 @@ fn extract_import_source(text: &str) -> String {
 
     // Go: `import "source"` — already handled above via "import"
     // Fallback: first meaningful token
-    trimmed.split_whitespace().last().unwrap_or(trimmed).to_string()
+    trimmed
+        .split_whitespace()
+        .last()
+        .unwrap_or(trimmed)
+        .to_string()
 }
 
 /// Format a single outline entry with optional indentation.

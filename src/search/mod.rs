@@ -79,18 +79,12 @@ pub fn search_content_expanded(
 }
 
 /// Raw symbol search — returns structured result for programmatic inspection.
-pub fn search_symbol_raw(
-    query: &str,
-    scope: &Path,
-) -> Result<SearchResult, TilthError> {
+pub fn search_symbol_raw(query: &str, scope: &Path) -> Result<SearchResult, TilthError> {
     symbol::search(query, scope, None)
 }
 
 /// Raw content search — returns structured result for programmatic inspection.
-pub fn search_content_raw(
-    query: &str,
-    scope: &Path,
-) -> Result<SearchResult, TilthError> {
+pub fn search_content_raw(query: &str, scope: &Path) -> Result<SearchResult, TilthError> {
     let (pattern, is_regex) = parse_pattern(query);
     content::search(pattern, scope, is_regex, None)
 }
@@ -140,7 +134,11 @@ fn format_search_result(
     let mut expand_remaining = expand;
 
     for m in &result.matches {
-        let kind = if m.is_definition { "definition" } else { "usage" };
+        let kind = if m.is_definition {
+            "definition"
+        } else {
+            "usage"
+        };
         let _ = write!(out, "\n\n## {}:{} [{kind}]", m.path.display(), m.line);
 
         // Try to add outline context around the match
@@ -162,7 +160,10 @@ fn format_search_result(
 
     if result.total_found > result.matches.len() {
         let omitted = result.total_found - result.matches.len();
-        let _ = write!(out, "\n\n... and {omitted} more matches. Narrow with scope.");
+        let _ = write!(
+            out,
+            "\n\n... and {omitted} more matches. Narrow with scope."
+        );
     }
 
     Ok(out)
@@ -172,10 +173,9 @@ fn format_search_result(
 /// For definitions: use tree-sitter node range (`def_range`).
 /// For usages: ±10 lines around the match.
 fn expand_match(m: &Match) -> Option<String> {
-    let (start, end) = m.def_range.unwrap_or((
-        m.line.saturating_sub(10),
-        m.line.saturating_add(10),
-    ));
+    let (start, end) = m
+        .def_range
+        .unwrap_or((m.line.saturating_sub(10), m.line.saturating_add(10)));
     let content = fs::read_to_string(&m.path).ok()?;
     let lines: Vec<&str> = content.lines().collect();
     let total = lines.len() as u32;
@@ -250,7 +250,11 @@ fn outline_context_for_match(
         }
     }
 
-    if found_match { Some(context) } else { None }
+    if found_match {
+        Some(context)
+    } else {
+        None
+    }
 }
 
 /// Extract (`start_line`, `end_line`) from an outline entry like "[20-115]" or "[16]".
@@ -263,7 +267,7 @@ fn extract_line_range(line: &str) -> Option<(u32, u32)> {
     let range_str = &trimmed[1..end];
     if let Some((a, b)) = range_str.split_once('-') {
         let start: u32 = a.trim().parse().ok()?;
-        // Handle import ranges like "[1-]" 
+        // Handle import ranges like "[1-]"
         let end: u32 = if b.trim().is_empty() {
             start
         } else {

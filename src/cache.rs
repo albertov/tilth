@@ -2,8 +2,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
-use dashmap::DashMap;
 use dashmap::mapref::entry::Entry;
+use dashmap::DashMap;
 
 /// Cached outline entry with insertion timestamp for TTL-based eviction.
 struct CacheEntry {
@@ -29,7 +29,7 @@ impl Default for OutlineCache {
 }
 
 impl OutlineCache {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }

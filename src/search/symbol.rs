@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Mutex;
 use std::time::SystemTime;
 
 use super::file_metadata;
@@ -59,7 +59,11 @@ const DEFINITION_KINDS: &[&str] = &[
 
 /// Symbol search: find definitions via tree-sitter, usages via ripgrep, concurrently.
 /// Merge results, deduplicate, definitions first.
-pub fn search(query: &str, scope: &Path, context: Option<&Path>) -> Result<SearchResult, TilthError> {
+pub fn search(
+    query: &str,
+    scope: &Path,
+    context: Option<&Path>,
+) -> Result<SearchResult, TilthError> {
     // Compile regex once, share across both arms
     let word_pattern = format!(r"\b{}\b", regex_syntax::escape(query));
     let matcher = RegexMatcher::new(&word_pattern).map_err(|e| TilthError::InvalidQuery {
@@ -81,7 +85,9 @@ pub fn search(query: &str, scope: &Path, context: Option<&Path>) -> Result<Searc
     let def_count = merged.len();
 
     for m in usages {
-        let dominated = merged[..def_count].iter().any(|d| d.path == m.path && d.line == m.line);
+        let dominated = merged[..def_count]
+            .iter()
+            .any(|d| d.path == m.path && d.line == m.line);
         if !dominated {
             merged.push(m);
         }
@@ -111,10 +117,7 @@ pub fn search(query: &str, scope: &Path, context: Option<&Path>) -> Result<Searc
 /// Single-read design: reads each file once, checks for symbol via
 /// `memchr::memmem` (SIMD), then reuses the buffer for tree-sitter parsing.
 /// Early termination: quits the parallel walker once enough defs are found.
-fn find_definitions(
-    query: &str,
-    scope: &Path,
-) -> Result<Vec<Match>, TilthError> {
+fn find_definitions(query: &str, scope: &Path) -> Result<Vec<Match>, TilthError> {
     let matches: Mutex<Vec<Match>> = Mutex::new(Vec::new());
     // Relaxed is correct: walker.run() joins all threads before we read the final value.
     // Early-quit checks are approximate by design — one extra iteration is harmless.
@@ -189,7 +192,9 @@ fn find_definitions(
 
             if !file_defs.is_empty() {
                 found_count.fetch_add(file_defs.len(), Ordering::Relaxed);
-                let mut all = matches.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+                let mut all = matches
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 all.extend(file_defs);
             }
 
@@ -197,7 +202,9 @@ fn find_definitions(
         })
     });
 
-    Ok(matches.into_inner().unwrap_or_else(std::sync::PoisonError::into_inner))
+    Ok(matches
+        .into_inner()
+        .unwrap_or_else(std::sync::PoisonError::into_inner))
 }
 
 /// Tree-sitter structural definition detection.
@@ -275,7 +282,16 @@ fn walk_for_definitions(
     // Recurse into children (for nested definitions, class bodies, impl blocks, etc.)
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        walk_for_definitions(child, query, path, lines, file_lines, mtime, defs, depth + 1);
+        walk_for_definitions(
+            child,
+            query,
+            path,
+            lines,
+            file_lines,
+            mtime,
+            defs,
+            depth + 1,
+        );
     }
 }
 
@@ -426,7 +442,9 @@ fn find_usages(
 
             if !file_matches.is_empty() {
                 found_count.fetch_add(file_matches.len(), Ordering::Relaxed);
-                let mut all = matches.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+                let mut all = matches
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 all.extend(file_matches);
             }
 
@@ -434,7 +452,9 @@ fn find_usages(
         })
     });
 
-    Ok(matches.into_inner().unwrap_or_else(std::sync::PoisonError::into_inner))
+    Ok(matches
+        .into_inner()
+        .unwrap_or_else(std::sync::PoisonError::into_inner))
 }
 
 /// Keyword heuristic fallback — only used when tree-sitter grammar unavailable.

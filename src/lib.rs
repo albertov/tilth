@@ -21,9 +21,9 @@ pub(crate) mod format;
 pub mod install;
 pub mod map;
 pub mod mcp;
-pub(crate) mod session;
 pub(crate) mod read;
 pub(crate) mod search;
+pub(crate) mod session;
 pub(crate) mod types;
 
 use std::path::Path;

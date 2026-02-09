@@ -87,7 +87,9 @@ fn extract_test_name(node: tree_sitter::Node, lines: &[&str]) -> Option<String> 
 
     // Find the first string argument
     let mut cursor2 = node.walk();
-    let args = node.children(&mut cursor2).find(|c| c.kind() == "arguments")?;
+    let args = node
+        .children(&mut cursor2)
+        .find(|c| c.kind() == "arguments")?;
 
     let mut cursor3 = args.walk();
     let first_arg = args.children(&mut cursor3).find(|c| {

@@ -90,7 +90,9 @@ fn main() {
     }
 
     // CLI mode: single query
-    let query = if let Some(q) = cli.query { q } else {
+    let query = if let Some(q) = cli.query {
+        q
+    } else {
         eprintln!("usage: tilth <query> [--scope DIR] [--section N-M] [--budget N]");
         process::exit(3);
     };
@@ -102,21 +104,9 @@ fn main() {
     let full = cli.full || !is_tty;
 
     let result = if full {
-        tilth::run_full(
-            &query,
-            &scope,
-            cli.section.as_deref(),
-            cli.budget,
-            &cache,
-        )
+        tilth::run_full(&query, &scope, cli.section.as_deref(), cli.budget, &cache)
     } else {
-        tilth::run(
-            &query,
-            &scope,
-            cli.section.as_deref(),
-            cli.budget,
-            &cache,
-        )
+        tilth::run(&query, &scope, cli.section.as_deref(), cli.budget, &cache)
     };
 
     match result {
@@ -126,7 +116,11 @@ fn main() {
                     "query": query,
                     "output": output,
                 });
-                println!("{}", serde_json::to_string_pretty(&json).expect("serde_json::Value is always serializable"));
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&json)
+                        .expect("serde_json::Value is always serializable")
+                );
             } else {
                 emit_output(&output, is_tty);
             }

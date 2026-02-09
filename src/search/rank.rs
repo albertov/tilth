@@ -5,8 +5,17 @@ use std::time::SystemTime;
 use crate::types::Match;
 
 const VENDOR_DIRS: &[&str] = &[
-    "node_modules", "vendor", "dist", "build", ".git", "target",
-    "__pycache__", ".venv", "venv", "pkg", "out",
+    "node_modules",
+    "vendor",
+    "dist",
+    "build",
+    ".git",
+    "target",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "pkg",
+    "out",
 ];
 
 /// Sort matches by score (highest first). Deterministic: same inputs, same order.
@@ -14,15 +23,33 @@ const VENDOR_DIRS: &[&str] = &[
 pub fn sort(matches: &mut [Match], query: &str, scope: &Path, context: Option<&Path>) {
     // Pre-compute context's package root once (same for entire batch)
     let ctx_parent = context.and_then(|c| c.parent());
-    let ctx_pkg_root = context.and_then(package_root).map(std::path::Path::to_path_buf);
+    let ctx_pkg_root = context
+        .and_then(package_root)
+        .map(std::path::Path::to_path_buf);
 
     // Cache package roots for match paths — avoids repeated stat walks
     let mut pkg_cache: HashMap<PathBuf, Option<PathBuf>> = HashMap::new();
 
     matches.sort_by(|a, b| {
-        let sa = score(a, query, scope, ctx_parent, ctx_pkg_root.as_ref(), &mut pkg_cache);
-        let sb = score(b, query, scope, ctx_parent, ctx_pkg_root.as_ref(), &mut pkg_cache);
-        sb.cmp(&sa).then_with(|| a.path.cmp(&b.path)).then_with(|| a.line.cmp(&b.line))
+        let sa = score(
+            a,
+            query,
+            scope,
+            ctx_parent,
+            ctx_pkg_root.as_ref(),
+            &mut pkg_cache,
+        );
+        let sb = score(
+            b,
+            query,
+            scope,
+            ctx_parent,
+            ctx_pkg_root.as_ref(),
+            &mut pkg_cache,
+        );
+        sb.cmp(&sa)
+            .then_with(|| a.path.cmp(&b.path))
+            .then_with(|| a.line.cmp(&b.line))
     });
 }
 
@@ -107,8 +134,12 @@ fn context_proximity(
 /// Walk up to find the nearest Cargo.toml, package.json, pyproject.toml, go.mod, etc.
 fn package_root(path: &Path) -> Option<&Path> {
     const MANIFESTS: &[&str] = &[
-        "Cargo.toml", "package.json", "pyproject.toml",
-        "go.mod", "pom.xml", "build.gradle",
+        "Cargo.toml",
+        "package.json",
+        "pyproject.toml",
+        "go.mod",
+        "pom.xml",
+        "build.gradle",
     ];
     let mut dir = path.parent()?;
     loop {
@@ -139,9 +170,9 @@ fn recency(mtime: SystemTime) -> u32 {
 
     match age {
         0..=3_600 => 100,          // last hour
-        3_601..=86_400 => 80,       // last day
-        86_401..=604_800 => 50,     // last week
-        604_801..=2_592_000 => 20,   // last month
+        3_601..=86_400 => 80,      // last day
+        86_401..=604_800 => 50,    // last week
+        604_801..=2_592_000 => 20, // last month
         _ => 0,
     }
 }

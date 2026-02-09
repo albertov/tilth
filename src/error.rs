@@ -54,7 +54,7 @@ impl std::error::Error for TilthError {}
 
 impl TilthError {
     /// Exit code matching the spec.
-    #[must_use] 
+    #[must_use]
     pub fn exit_code(&self) -> i32 {
         match self {
             Self::NotFound { .. } | Self::IoError { .. } => 2,

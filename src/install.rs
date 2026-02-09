@@ -39,8 +39,8 @@ pub fn run(host: &str) -> Result<(), String> {
             .map_err(|e| format!("failed to create {}: {e}", parent.display()))?;
     }
 
-    let out = serde_json::to_string_pretty(&config)
-        .expect("serde_json::Value is always serializable");
+    let out =
+        serde_json::to_string_pretty(&config).expect("serde_json::Value is always serializable");
     fs::write(&config_path, out)
         .map_err(|e| format!("failed to write {}: {e}", config_path.display()))?;
 
