@@ -18,6 +18,7 @@ pub mod cache;
 pub(crate) mod classify;
 pub mod error;
 pub(crate) mod format;
+pub mod install;
 pub mod map;
 pub mod mcp;
 pub(crate) mod session;

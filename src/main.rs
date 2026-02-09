@@ -44,6 +44,11 @@ struct Cli {
     /// Print shell completions for the given shell.
     #[arg(long, value_name = "SHELL")]
     completions: Option<Shell>,
+
+    /// Install tilth into an MCP host config.
+    /// Supported: claude-code, cursor, windsurf, claude-desktop
+    #[arg(long, value_name = "HOST")]
+    install: Option<String>,
 }
 
 fn main() {
@@ -52,6 +57,15 @@ fn main() {
     // Shell completions
     if let Some(shell) = cli.completions {
         clap_complete::generate(shell, &mut Cli::command(), "tilth", &mut io::stdout());
+        return;
+    }
+
+    // Install mode: write MCP config for a host
+    if let Some(ref host) = cli.install {
+        if let Err(e) = tilth::install::run(host) {
+            eprintln!("install error: {e}");
+            process::exit(1);
+        }
         return;
     }
 
