@@ -15,3 +15,10 @@ Thumbs.db
 .idea/
 .vscode/
 *.iml
+
+# Benchmark
+benchmark/fixtures/repo/
+benchmark/fixtures/repos/
+benchmark/results/*.jsonl
+benchmark/results/*.md
+!benchmark/results/.gitkeep
