@@ -57,3 +57,8 @@ fn snapshot_read_javascript_outline() {
 fn snapshot_read_tsx_outline() {
     insta::assert_snapshot!(read_fixture("component.tsx"));
 }
+
+#[test]
+fn snapshot_read_rescript_large_outline() {
+    insta::assert_snapshot!(read_fixture("Store.res"));
+}

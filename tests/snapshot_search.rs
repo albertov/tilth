@@ -59,3 +59,8 @@ fn search_finds_rescript_component_by_module_name() {
         result
     );
 }
+
+#[test]
+fn snapshot_search_rescript_store_module() {
+    insta::assert_snapshot!(search_fixture("Store"));
+}
