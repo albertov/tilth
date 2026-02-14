@@ -353,6 +353,23 @@ fn node_to_entry(
         Vec::new()
     };
 
+    // Collect JSX children for @react.component functions
+    let children = if matches!(lang, Lang::ReScript)
+        && node.kind() == "let_declaration"
+        && matches!(kind, OutlineKind::Function)
+    {
+        // Check for @react.component decorator (sibling-based)
+        if node.prev_sibling().map_or(false, |prev| {
+            prev.kind() == "decorator" && node_text(prev, lines).contains("@react.component")
+        }) {
+            collect_jsx_children(node, lines)
+        } else {
+            children
+        }
+    } else {
+        children
+    };
+
     // Extract doc comment if present
     let doc = extract_doc(node, lines);
 
@@ -696,6 +713,131 @@ fn format_entry(entry: &OutlineEntry, indent: usize) -> String {
     format!("{prefix}{range:<12} {kind_label} {}{sig}{doc}", entry.name)
 }
 
+/// Collect JSX element children from a ReScript component function.
+/// Walks the entire function body tree looking for JSX elements.
+fn collect_jsx_children(node: tree_sitter::Node, lines: &[&str]) -> Vec<OutlineEntry> {
+    let mut entries = Vec::new();
+    collect_jsx_recursive(node, lines, &mut entries);
+    entries
+}
+
+fn collect_jsx_recursive(node: tree_sitter::Node, lines: &[&str], entries: &mut Vec<OutlineEntry>) {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        match child.kind() {
+            "jsx_element" => {
+                // Extract tag name from jsx_opening_element
+                let tag = jsx_tag_name(child, lines);
+                let mut entry = OutlineEntry {
+                    kind: OutlineKind::Property, // Use Property for JSX tags
+                    name: format!("<{tag}>"),
+                    start_line: (child.start_position().row + 1) as u32,
+                    end_line: (child.end_position().row + 1) as u32,
+                    signature: None,
+                    children: Vec::new(),
+                    doc: None,
+                };
+                // Recurse into jsx_element children for nested JSX
+                collect_jsx_recursive(child, lines, &mut entry.children);
+                entries.push(entry);
+            }
+            "jsx_self_closing_element" => {
+                let tag = jsx_self_closing_tag(child, lines);
+                // Check for spread props
+                let has_spread = has_jsx_spread(child);
+                let name = if has_spread {
+                    format!("<{tag} .../>")
+                } else {
+                    format!("<{tag} />")
+                };
+                entries.push(OutlineEntry {
+                    kind: OutlineKind::Property,
+                    name,
+                    start_line: (child.start_position().row + 1) as u32,
+                    end_line: (child.end_position().row + 1) as u32,
+                    signature: None,
+                    children: Vec::new(),
+                    doc: None,
+                });
+            }
+            "jsx_fragment" => {
+                let mut entry = OutlineEntry {
+                    kind: OutlineKind::Property,
+                    name: "<>...</>".to_string(),
+                    start_line: (child.start_position().row + 1) as u32,
+                    end_line: (child.end_position().row + 1) as u32,
+                    signature: None,
+                    children: Vec::new(),
+                    doc: None,
+                };
+                collect_jsx_recursive(child, lines, &mut entry.children);
+                entries.push(entry);
+            }
+            _ => {
+                // Recurse into non-JSX nodes looking for JSX
+                collect_jsx_recursive(child, lines, entries);
+            }
+        }
+    }
+}
+
+/// Extract tag name from a jsx_element (from its jsx_opening_element child).
+fn jsx_tag_name(node: tree_sitter::Node, lines: &[&str]) -> String {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "jsx_opening_element" {
+            return jsx_identifier_text(child, lines);
+        }
+    }
+    "unknown".to_string()
+}
+
+/// Extract tag name from a jsx_self_closing_element.
+fn jsx_self_closing_tag(node: tree_sitter::Node, lines: &[&str]) -> String {
+    jsx_identifier_text(node, lines)
+}
+
+/// Extract the identifier text from a JSX element node (handles dotted tags).
+fn jsx_identifier_text(node: tree_sitter::Node, lines: &[&str]) -> String {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        match child.kind() {
+            "nested_jsx_identifier" => {
+                // Dotted tag: Header.Nav -> collect all jsx_identifier children, join with "."
+                let mut parts = Vec::new();
+                let mut inner_cursor = child.walk();
+                for inner in child.children(&mut inner_cursor) {
+                    if inner.kind() == "jsx_identifier" {
+                        parts.push(node_text(inner, lines));
+                    }
+                }
+                return parts.join(".");
+            }
+            "jsx_identifier" => {
+                return node_text(child, lines);
+            }
+            _ => {}
+        }
+    }
+    "unknown".to_string()
+}
+
+/// Check if a JSX element has spread props ({...expr}).
+fn has_jsx_spread(node: tree_sitter::Node) -> bool {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "jsx_expression" {
+            let mut inner = child.walk();
+            for inner_child in child.children(&mut inner) {
+                if inner_child.kind() == "spread_element" {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 /// Fallback when tree-sitter grammar isn't available.
 fn fallback_outline(content: &str, _max_lines: usize) -> String {
     super::fallback::head_tail(content)
@@ -1003,5 +1145,135 @@ external alert: string => unit = "alert"
                 .any(|e| e.kind == OutlineKind::TypeAlias && e.name == "color"),
             "Should find type declaration in .resi"
         );
+    }
+
+    // RESCRIPT_TREE_SITTER.FR-6, SC-6.1-6.3: "@react.component parses and produces outline with JSX"
+    // RESCRIPT_TREE_SITTER.FR-7, SC-7.1-7.5: "JSX-semantic indexing"
+    #[test]
+    fn test_rescript_jsx_component_indexing() {
+        let source = r#"@react.component
+let make = (~name: string) => {
+  <div className="container">
+    <h1> {React.string(name)} </h1>
+    <Counter count={1} />
+    <> <span> {React.string("fragment")} </span> </>
+    <Header.Nav items={["a", "b"]} />
+    <Button {...props} />
+  </div>
+}
+"#;
+        let entries = {
+            let lang_ts = outline_language(Lang::ReScript).unwrap();
+            let mut parser = tree_sitter::Parser::new();
+            parser.set_language(&lang_ts).unwrap();
+            let tree = parser.parse(source, None).unwrap();
+            let root = tree.root_node();
+            let lines: Vec<&str> = source.lines().collect();
+            walk_top_level(root, &lines, Lang::ReScript)
+        };
+
+        // SC-6.1: @react.component function produces outline entry
+        assert_eq!(
+            entries.len(),
+            1,
+            "Should have one top-level entry (the component)"
+        );
+        let component = &entries[0];
+        assert_eq!(component.kind, OutlineKind::Function);
+        assert_eq!(component.name, "make");
+
+        // SC-7.1: JSX tags are indexed as children
+        assert!(
+            !component.children.is_empty(),
+            "Component should have JSX children"
+        );
+
+        // Should have <div> as top-level JSX child
+        let div = component.children.iter().find(|c| c.name.contains("div"));
+        assert!(div.is_some(), "Should find <div> JSX element");
+        let div = div.unwrap();
+
+        // SC-7.4: Nested JSX children
+        assert!(
+            !div.children.is_empty(),
+            "div should have nested JSX children"
+        );
+
+        // Check for h1
+        assert!(
+            div.children.iter().any(|c| c.name.contains("h1")),
+            "Should find <h1>"
+        );
+
+        // Check for Counter (self-closing)
+        assert!(
+            div.children.iter().any(|c| c.name.contains("Counter")),
+            "Should find <Counter>"
+        );
+
+        // SC-7.2: Fragment
+        assert!(
+            div.children.iter().any(|c| c.name.contains("<>...")),
+            "Should find fragment"
+        );
+
+        // SC-6.3, SC-7.3: Dotted tag
+        assert!(
+            div.children.iter().any(|c| c.name.contains("Header.Nav")),
+            "Should find dotted tag <Header.Nav>"
+        );
+
+        // SC-7.3: Spread props
+        assert!(
+            div.children
+                .iter()
+                .any(|c| c.name.contains("Button") && c.name.contains("...")),
+            "Should find <Button .../> with spread indication"
+        );
+    }
+
+    // SC-7.5: "Non-JSX functions are not affected"
+    #[test]
+    fn test_rescript_non_component_no_jsx_children() {
+        let source = r#"let add = (x, y) => x + y
+
+let render = () => {
+  <div> {React.string("not a component")} </div>
+}
+"#;
+        let entries = {
+            let lang_ts = outline_language(Lang::ReScript).unwrap();
+            let mut parser = tree_sitter::Parser::new();
+            parser.set_language(&lang_ts).unwrap();
+            let tree = parser.parse(source, None).unwrap();
+            let root = tree.root_node();
+            let lines: Vec<&str> = source.lines().collect();
+            walk_top_level(root, &lines, Lang::ReScript)
+        };
+
+        // Both functions should have NO JSX children since no @react.component
+        for entry in &entries {
+            assert!(
+                entry.children.is_empty(),
+                "Function '{}' without @react.component should have no JSX children",
+                entry.name
+            );
+        }
+    }
+
+    // EDGE-4: "Malformed JSX degrades gracefully"
+    #[test]
+    fn test_rescript_malformed_jsx_graceful() {
+        let source = r#"@react.component
+let make = (~name: string) => {
+  <div>
+    <span>
+  </div>
+}
+"#;
+        // Should not panic — graceful degradation
+        let result = outline(source, Lang::ReScript, 100);
+        // May produce partial results or empty, but should not crash
+        let _ = result;
     }
 }
