@@ -1,0 +1,23 @@
+---
+source: tests/snapshot_read.rs
+expression: "read_fixture(\"Parser.hs\")"
+---
+# ./tests/fixtures/polyglot-project/src/Parser.hs (18 lines, ~115 tokens) [full]
+
+module Parser where
+
+import Data.Char
+
+data Token = Ident String | Number Int | Symbol Char
+
+tokenize :: String -> [Token]
+tokenize [] = []
+tokenize (c:cs)
+  | isAlpha c = let (word, rest) = span isAlphaNum (c:cs)
+                in Ident word : tokenize rest
+  | isDigit c = let (num, rest) = span isDigit (c:cs)
+                in Number (read num) : tokenize rest
+  | otherwise = Symbol c : tokenize cs
+
+class Parseable a where
+  parse :: String -> Maybe a

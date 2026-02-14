@@ -1,0 +1,19 @@
+---
+source: tests/snapshot_read.rs
+expression: "read_fixture(\"Button.res\")"
+---
+# ./tests/fixtures/polyglot-project/src/Button.res (14 lines, ~68 tokens) [full]
+
+type color = Red | Green | Blue
+
+let defaultColor = Red
+
+module Theme = {
+  let primary = "blue"
+  let secondary = "gray"
+}
+
+@react.component
+let make = (~label: string, ~onClick: unit => unit) => {
+  <button onClick={_ => onClick()}> {React.string(label)} </button>
+}
