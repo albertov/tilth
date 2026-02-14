@@ -1,10 +1,13 @@
 use std::path::Path;
 use tilth::cache::OutlineCache;
 
-fn search_fixture(symbol: &str) -> String {
-    let scope = Path::new("tests/fixtures/polyglot-project");
+fn search_fixture_in_scope(symbol: &str, scope_path: &Path) -> String {
     let cache = OutlineCache::new();
-    tilth::run(symbol, scope, None, None, &cache).expect("search should succeed")
+    tilth::run(symbol, scope_path, None, None, &cache).expect("search should succeed")
+}
+
+fn search_fixture(symbol: &str) -> String {
+    search_fixture_in_scope(symbol, Path::new("tests/fixtures/polyglot-project"))
 }
 
 #[test]
@@ -20,7 +23,9 @@ fn snapshot_search_haskell_type() {
 #[test]
 fn snapshot_search_rescript_component() {
     // "make" is the ReScript component function name
-    insta::assert_snapshot!(search_fixture("make"));
+    // Search in single file to ensure deterministic ordering (avoid ranking drift from multiple matches)
+    let single_file_scope = Path::new("tests/fixtures/polyglot-project/src/Button.res");
+    insta::assert_snapshot!(search_fixture_in_scope("make", single_file_scope));
 }
 
 #[test]

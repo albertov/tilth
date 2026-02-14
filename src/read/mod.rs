@@ -533,4 +533,30 @@ mod tests {
             FileType::Code(Lang::ReScript)
         );
     }
+
+    // HASKELL_TREE_SITTER.EDGE-2: Literate Haskell (.lhs) is not supported
+    #[test]
+    fn test_detect_haskell_lhs_is_not_supported() {
+        assert_ne!(
+            detect_file_type(Path::new("Main.lhs")),
+            FileType::Code(Lang::Haskell)
+        );
+    }
+
+    // HASKELL_TREE_SITTER.SC-1.2, RESCRIPT_TREE_SITTER.SC-1.3: Verify existing language extension mappings remain unchanged
+    #[test]
+    fn test_existing_language_extension_mappings_unchanged() {
+        assert_eq!(
+            detect_file_type(Path::new("file.rs")),
+            FileType::Code(Lang::Rust)
+        );
+        assert_eq!(
+            detect_file_type(Path::new("file.ts")),
+            FileType::Code(Lang::TypeScript)
+        );
+        assert_eq!(
+            detect_file_type(Path::new("file.py")),
+            FileType::Code(Lang::Python)
+        );
+    }
 }
