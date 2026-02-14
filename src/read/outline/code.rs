@@ -482,12 +482,14 @@ pub(crate) fn extract_import_source(text: &str) -> String {
         return rest.split_whitespace().next().unwrap_or("").to_string();
     }
     // Haskell: `import [qualified] Module [as Alias] [(items)]`
+    // Haskell imports never contain `from` — JS/TS does (`import X from "source"`)
     if let Some(rest) = trimmed.strip_prefix("import ") {
-        let rest = rest.strip_prefix("qualified ").unwrap_or(rest);
-        if let Some(module) = rest.split_whitespace().next() {
-            // Haskell modules start uppercase
-            if module.chars().next().map_or(false, |c| c.is_uppercase()) {
-                return module.to_string();
+        if !trimmed.contains(" from ") && !trimmed.contains(" from\"") {
+            let rest = rest.strip_prefix("qualified ").unwrap_or(rest);
+            if let Some(module) = rest.split_whitespace().next() {
+                if module.chars().next().map_or(false, |c| c.is_uppercase()) {
+                    return module.to_string();
+                }
             }
         }
     }
@@ -725,6 +727,20 @@ add x y = x + y
         assert_eq!(
             extract_import_source("import qualified Data.Text as T"),
             "Data.Text"
+        );
+    }
+
+    // Regression: Haskell import handler must not steal JS/TS imports
+    #[test]
+    fn test_import_source_js_not_stolen_by_haskell() {
+        // JS/TS: import React from "react" → source should be "react", not "React"
+        assert_eq!(
+            extract_import_source(r#"import React from "react""#),
+            "react"
+        );
+        assert_eq!(
+            extract_import_source(r#"import { useState } from "react""#),
+            "react"
         );
     }
 }
