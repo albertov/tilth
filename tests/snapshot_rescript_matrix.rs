@@ -128,12 +128,13 @@ fn symbol_search_finds_resi_declarations() {
     let scope = Path::new("tests/fixtures/rescript-matrix");
     let cache = OutlineCache::new();
 
-    // Search for a type that should be defined in Types.resi
-    let output = tilth::run("Color", scope, None, None, &cache)
+    // Search for a 'user' type that is defined in Types.resi
+    let output = tilth::run("user", scope, None, None, &cache)
         .expect("Should successfully search for type symbol");
 
     assert!(
         output.contains("Types.resi"),
-        "Search results should reference Types.resi interface file"
+        "Search results should reference Types.resi interface file. Got: \n{}",
+        output
     );
 }

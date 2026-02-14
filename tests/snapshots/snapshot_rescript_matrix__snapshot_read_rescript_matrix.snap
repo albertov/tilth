@@ -1,0 +1,136 @@
+---
+source: tests/snapshot_rescript_matrix.rs
+expression: aggregated_output
+---
+=== 01_decorator.res ===
+# ./tests/fixtures/rescript-matrix/01_decorator.res (6 lines, ~22 tokens) [full]
+
+@decorator
+type decoratedType = string
+
+@decorator
+let decoratedFunction = () => "ok"
+
+=== 02_type_declarations.res ===
+# ./tests/fixtures/rescript-matrix/02_type_declarations.res (9 lines, ~31 tokens) [full]
+
+type color = Red | Green | Blue
+
+let defaultColor = Red
+
+module Theme = {
+  let primary = "blue"
+  let secondary = "gray"
+}
+
+=== 03_external_declarations.res ===
+# ./tests/fixtures/rescript-matrix/03_external_declarations.res (6 lines, ~40 tokens) [full]
+
+@external("Math", "random")
+let mathRandom: unit => float = "Math.random"
+
+@send @module("./path/to/module")
+external someExternal: (int, int) => int = "add"
+
+=== 04_nested_module.res ===
+# ./tests/fixtures/rescript-matrix/04_nested_module.res (9 lines, ~34 tokens) [full]
+
+module Inner = {
+  let helper = () => "inner"
+  module Deep = {
+    let nested = () => "deep"
+  }
+}
+
+let access = () => Inner.nested()
+
+=== 05_open_statement.res ===
+# ./tests/fixtures/rescript-matrix/05_open_statement.res (7 lines, ~22 tokens) [full]
+
+open React
+open Belt
+
+let render = () => {
+  <div> {React.string("Content")} </div>
+}
+
+=== 06_exception.res ===
+# ./tests/fixtures/rescript-matrix/06_exception.res (11 lines, ~45 tokens) [full]
+
+exception ValidationError(string)
+exception NotFoundError
+
+let validate = input => {
+  if (input == "") {
+    raise(ValidationError("Empty input"))
+  } else {
+    Ok(input)
+  }
+}
+
+=== 07_empty.res ===
+# ./tests/fixtures/rescript-matrix/07_empty.res (2 lines, ~9 tokens) [full]
+
+// Empty file for edge case testing
+
+=== 08_function_let.res ===
+# ./tests/fixtures/rescript-matrix/08_function_let.res (4 lines, ~26 tokens) [full]
+
+let add = (a, b) => a + b
+let multiply = (x, y) => x * y
+let greet = name => "Hello, " ++ name ++ "!"
+
+=== 09_fragment.res ===
+# ./tests/fixtures/rescript-matrix/09_fragment.res (8 lines, ~35 tokens) [full]
+
+@react.component
+let make = (~label) => {
+  <>
+    <h1> {React.string(label)} </h1>
+    <p> {React.string("Fragment example")} </p>
+  </>
+}
+
+=== 10_spread_props.res ===
+# ./tests/fixtures/rescript-matrix/10_spread_props.res (9 lines, ~55 tokens) [full]
+
+@react.component
+let make = (~props) => {
+  <div {...props}> {React.string("Spread props")} </div>
+}
+
+let component2 = (~extraProps) => {
+  <div {...extraProps className="extra"}> {React.string("More spread")} </div>
+}
+
+=== 11_dotted_tags.res ===
+# ./tests/fixtures/rescript-matrix/11_dotted_tags.res (20 lines, ~98 tokens) [full]
+
+@react.component
+let make = () => {
+  <>
+    <React.Fragment>
+      <div> {React.string("Nested")} </div>
+    </React.Fragment>
+    <MySubComponent.SubComponent />
+  </>
+}
+
+module MySubComponent = {
+  @react.component
+  let make = () => <div> {React.string("Sub")} </div>
+
+  module SubComponent = {
+    @react.component
+    let make = () => <span> {React.string("Deep nested")} </span>
+  }
+}
+
+=== 12_malformed_jsx.res ===
+# ./tests/fixtures/rescript-matrix/12_malformed_jsx.res (6 lines, ~35 tokens) [full]
+
+@react.component
+let make = (~label) => {
+  // Malformed JSX - missing closing tag (intentional test case)
+  <div> {React.string(label)} 
+}
