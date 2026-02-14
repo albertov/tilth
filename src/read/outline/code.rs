@@ -1,8 +1,9 @@
 use crate::types::{Lang, OutlineEntry, OutlineKind};
+use std::path::Path;
 
 /// Generate a code outline using tree-sitter. Walks top-level AST nodes,
 /// emitting signatures without bodies.
-pub fn outline(content: &str, lang: Lang, max_lines: usize) -> String {
+pub fn outline(content: &str, lang: Lang, max_lines: usize, path: Option<&Path>) -> String {
     let Some(language) = outline_language(lang) else {
         return fallback_outline(content, max_lines);
     };
@@ -18,7 +19,25 @@ pub fn outline(content: &str, lang: Lang, max_lines: usize) -> String {
 
     let root = tree.root_node();
     let lines: Vec<&str> = content.lines().collect();
-    let entries = walk_top_level(root, &lines, lang);
+    let mut entries = walk_top_level(root, &lines, lang);
+
+    // ReScript: every .res file is implicitly a module named after the file.
+    // Wrap top-level entries in a synthetic module so symbol search finds
+    // the component by its module name (e.g., searching "Button" finds Button.res).
+    if lang == Lang::ReScript {
+        if let Some(stem) = path.and_then(|p| p.file_stem()).and_then(|s| s.to_str()) {
+            let end_line = entries.last().map_or(0, |e| e.end_line);
+            entries = vec![OutlineEntry {
+                kind: OutlineKind::Module,
+                name: stem.to_string(),
+                start_line: 1,
+                end_line,
+                signature: None,
+                children: entries,
+                doc: None,
+            }];
+        }
+    }
 
     format_entries(&entries, &lines, max_lines)
 }
@@ -973,7 +992,7 @@ add x y = x + y
     #[test]
     fn test_haskell_empty_file() {
         let source = "";
-        let result = outline(source, Lang::Haskell, 100);
+        let result = outline(source, Lang::Haskell, 100, None);
         assert!(
             result.is_empty(),
             "Empty Haskell file should produce empty outline"
@@ -1104,7 +1123,7 @@ exception NotFound(string)
     #[test]
     fn test_rescript_empty_file() {
         let source = "";
-        let result = outline(source, Lang::ReScript, 100);
+        let result = outline(source, Lang::ReScript, 100, None);
         assert!(
             result.is_empty(),
             "Empty ReScript file should produce empty outline"
@@ -1272,7 +1291,7 @@ let make = (~name: string) => {
 }
 "#;
         // Should not panic — graceful degradation
-        let result = outline(source, Lang::ReScript, 100);
+        let result = outline(source, Lang::ReScript, 100, None);
         // May produce partial results or empty, but should not crash
         let _ = result;
     }

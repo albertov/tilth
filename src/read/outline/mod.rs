@@ -31,7 +31,7 @@ pub fn generate(
     }
 
     match file_type {
-        FileType::Code(lang) => code::outline(content, lang, max_lines),
+        FileType::Code(lang) => code::outline(content, lang, max_lines, Some(path)),
         FileType::Markdown => markdown::outline(buf, max_lines),
         FileType::StructuredData => structured::outline(path, content, max_lines),
         FileType::Tabular => tabular::outline(content, max_lines),
