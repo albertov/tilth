@@ -1595,4 +1595,38 @@ startApp config = putStrLn "Starting..."
             "function startApp should map to Function"
         );
     }
+
+    // HASKELL_PRAGMAS_ONLY.12: Pragmas-only Haskell file should not crash and return empty outline
+    #[test]
+    fn test_haskell_pragmas_only() {
+        let source = r#"{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# OPTIONS_GHC -Wall #-}
+"#;
+        let result = outline(source, Lang::Haskell, 100, None);
+
+        // Should not crash - graceful handling
+        assert!(
+            result.is_empty() || result.trim().is_empty() || !result.contains("ERROR"),
+            "Pragmas-only Haskell file should produce empty output, not crash. Got: {}",
+            result
+        );
+
+        // Verify no declarations were extracted (only pragmas present)
+        let entries = {
+            let lang_ts = outline_language(Lang::Haskell).unwrap();
+            let mut parser = tree_sitter::Parser::new();
+            parser.set_language(&lang_ts).unwrap();
+            let tree = parser.parse(source, None).unwrap();
+            let root = tree.root_node();
+            let lines: Vec<&str> = source.lines().collect();
+            walk_top_level(root, &lines, Lang::Haskell)
+        };
+
+        assert!(
+            entries.is_empty(),
+            "Pragmas-only file should have no declarations extracted, found {}",
+            entries.len()
+        );
+    }
 }
