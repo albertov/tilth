@@ -5,7 +5,8 @@ use std::sync::Mutex;
 use std::time::SystemTime;
 
 use super::file_metadata;
-use super::treesitter::{extract_definition_name, DEFINITION_KINDS};
+use super::treesitter::extract_definition_name;
+pub(crate) use super::treesitter::DEFINITION_KINDS;
 
 use crate::error::TilthError;
 use crate::read::detect_file_type;
@@ -39,7 +40,7 @@ pub fn search(
         || find_usages(query, &matcher, scope),
     );
 
-    let defs = defs?;
+    let defs = collapse_haskell_definition_blocks(defs?, query);
     let usages = usages?;
 
     // Deduplicate: remove usage matches that overlap with definition matches.
@@ -48,9 +49,20 @@ pub fn search(
     let def_count = merged.len();
 
     for m in usages {
-        let dominated = merged[..def_count]
-            .iter()
-            .any(|d| d.path == m.path && d.line == m.line);
+        let dominated = merged[..def_count].iter().any(|d| {
+            if d.path != m.path {
+                return false;
+            }
+            if d.line == m.line {
+                return true;
+            }
+            if is_haskell_path(&d.path) {
+                if let Some((start, end)) = d.def_range {
+                    return m.line >= start && m.line <= end;
+                }
+            }
+            false
+        });
         if !dominated {
             merged.push(m);
         }
@@ -70,6 +82,77 @@ pub fn search(
         definitions: def_count,
         usages: usage_count,
     })
+}
+
+fn collapse_haskell_definition_blocks(defs: Vec<Match>, query: &str) -> Vec<Match> {
+    let mut defs = defs;
+    defs.sort_by(|a, b| a.path.cmp(&b.path).then(a.line.cmp(&b.line)));
+
+    let mut collapsed = Vec::with_capacity(defs.len());
+
+    for def in defs {
+        let should_merge = is_haskell_path(&def.path)
+            && is_haskell_function_clause_match(&def, query)
+            && collapsed
+                .last()
+                .is_some_and(|prev| can_merge_haskell_function_block(prev, &def, query));
+
+        if should_merge {
+            let prev = collapsed
+                .last_mut()
+                .expect("checked with is_some_and above");
+            let (prev_start, prev_end) = match_range(prev);
+            let (next_start, next_end) = match_range(&def);
+            prev.def_range = Some((prev_start.min(next_start), prev_end.max(next_end)));
+            if def.line < prev.line {
+                prev.line = def.line;
+                prev.column = def.column;
+                prev.text = def.text;
+            }
+            continue;
+        }
+
+        collapsed.push(def);
+    }
+
+    collapsed
+}
+
+fn can_merge_haskell_function_block(prev: &Match, next: &Match, query: &str) -> bool {
+    prev.path == next.path
+        && is_haskell_function_clause_match(prev, query)
+        && is_haskell_function_clause_match(next, query)
+        && {
+            let (_, prev_end) = match_range(prev);
+            let (next_start, _) = match_range(next);
+            next_start <= prev_end.saturating_add(1)
+        }
+}
+
+fn match_range(m: &Match) -> (u32, u32) {
+    m.def_range.unwrap_or((m.line, m.line))
+}
+
+fn is_haskell_function_clause_match(m: &Match, query: &str) -> bool {
+    // A Haskell definition match is a function clause if the text starts with the
+    // query name. Tree-sitter already classified it as a definition kind (signature,
+    // function, bind), so we only need to confirm the name appears at the start.
+    // We can't require `=` or `::` because multi-line equations with guards may
+    // have those tokens on continuation lines not captured in `m.text`.
+    let text = m.text.trim_start();
+    if !text.starts_with(query) {
+        return false;
+    }
+    // After the name there should be whitespace, EOF, or a Haskell operator/delimiter
+    // (not an alphanumeric continuation, which would mean a longer name).
+    text[query.len()..]
+        .chars()
+        .next()
+        .map_or(true, |c| !c.is_alphanumeric() && c != '_' && c != '\'')
+}
+
+fn is_haskell_path(path: &Path) -> bool {
+    matches!(path.extension().and_then(|ext| ext.to_str()), Some("hs"))
 }
 
 /// Find definitions using tree-sitter structural detection.
@@ -122,7 +205,11 @@ fn find_definitions(query: &str, scope: &Path) -> Result<Vec<Match>, TilthError>
             };
 
             // Fast byte check via memchr::memmem (SIMD) — skip files without the symbol
-            if memchr::memmem::find(content.as_bytes(), needle).is_none() {
+            // Exception: ReScript .res files define implicit modules named by filename, so check
+            // the filename stem even if the symbol doesn't appear in the content.
+            let is_rescript_module = path.extension().and_then(|e| e.to_str()) == Some("res")
+                && path.file_stem().and_then(|s| s.to_str()) == Some(query);
+            if !is_rescript_module && memchr::memmem::find(content.as_bytes(), needle).is_none() {
                 return ignore::WalkState::Continue;
             }
 
@@ -179,7 +266,7 @@ fn find_defs_treesitter(
     let mut parser = tree_sitter::Parser::new();
     if parser.set_language(ts_lang).is_err() {
         return Vec::new();
-    }
+    };
 
     let Some(tree) = parser.parse(content, None) else {
         return Vec::new();
@@ -190,6 +277,33 @@ fn find_defs_treesitter(
     let mut defs = Vec::new();
 
     walk_for_definitions(root, query, path, &lines, file_lines, mtime, &mut defs, 0);
+
+    // ReScript: every .res file is implicitly a module named after the file.
+    // Add a synthetic definition for the module to enable searching by module name.
+    if path.extension().and_then(|e| e.to_str()) == Some("res") {
+        if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+            if stem == query {
+                let end_line = if lines.is_empty() {
+                    1
+                } else {
+                    lines.len() as u32
+                };
+                let text = lines.first().unwrap_or(&"").trim_end().to_string();
+                defs.push(Match {
+                    path: path.to_path_buf(),
+                    line: 1,
+                    column: 0,
+                    text,
+                    is_definition: true,
+                    exact: true,
+                    file_lines,
+                    mtime,
+                    def_range: Some((1, end_line)),
+                    def_name: Some(stem.to_string()),
+                });
+            }
+        }
+    }
 
     defs
 }

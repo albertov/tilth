@@ -352,6 +352,8 @@ pub fn detect_file_type(path: &Path) -> FileType {
         Some("swift") => FileType::Code(Lang::Swift),
         Some("kt" | "kts") => FileType::Code(Lang::Kotlin),
         Some("cs") => FileType::Code(Lang::CSharp),
+        Some("hs") => FileType::Code(Lang::Haskell),
+        Some("res" | "resi") => FileType::Code(Lang::ReScript),
 
         Some("md" | "mdx" | "rst") => FileType::Markdown,
         Some("json" | "yaml" | "yml" | "toml" | "xml" | "ini") => FileType::StructuredData,
@@ -508,5 +510,53 @@ mod tests {
 
         // String without hashes
         assert_eq!(resolve_heading(input, "hello"), None);
+    }
+
+    // HASKELL_TREE_SITTER.FR-1, SC-1.1: ".hs extension → FileType::Code(Lang::Haskell)"
+    #[test]
+    fn test_detect_haskell_extension() {
+        assert_eq!(
+            detect_file_type(Path::new("Main.hs")),
+            FileType::Code(Lang::Haskell)
+        );
+    }
+
+    // RESCRIPT_TREE_SITTER.FR-1, SC-1.1, SC-1.2: ".res/.resi → FileType::Code(Lang::ReScript)"
+    #[test]
+    fn test_detect_rescript_extensions() {
+        assert_eq!(
+            detect_file_type(Path::new("App.res")),
+            FileType::Code(Lang::ReScript)
+        );
+        assert_eq!(
+            detect_file_type(Path::new("Types.resi")),
+            FileType::Code(Lang::ReScript)
+        );
+    }
+
+    // HASKELL_TREE_SITTER.EDGE-2: Literate Haskell (.lhs) is not supported
+    #[test]
+    fn test_detect_haskell_lhs_is_not_supported() {
+        assert_ne!(
+            detect_file_type(Path::new("Main.lhs")),
+            FileType::Code(Lang::Haskell)
+        );
+    }
+
+    // HASKELL_TREE_SITTER.SC-1.2, RESCRIPT_TREE_SITTER.SC-1.3: Verify existing language extension mappings remain unchanged
+    #[test]
+    fn test_existing_language_extension_mappings_unchanged() {
+        assert_eq!(
+            detect_file_type(Path::new("file.rs")),
+            FileType::Code(Lang::Rust)
+        );
+        assert_eq!(
+            detect_file_type(Path::new("file.ts")),
+            FileType::Code(Lang::TypeScript)
+        );
+        assert_eq!(
+            detect_file_type(Path::new("file.py")),
+            FileType::Code(Lang::Python)
+        );
     }
 }

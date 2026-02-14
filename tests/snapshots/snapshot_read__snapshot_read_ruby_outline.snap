@@ -1,0 +1,19 @@
+---
+source: tests/snapshot_read.rs
+expression: "read_fixture(\"helper.rb\")"
+---
+# ./tests/fixtures/polyglot-project/src/helper.rb (14 lines, ~54 tokens) [full]
+
+class StringHelper
+  def self.truncate(text, length)
+    text[0...length]
+  end
+
+  def self.capitalize_words(text)
+    text.split.map(&:capitalize).join(' ')
+  end
+end
+
+def format_output(data)
+  data.to_s.strip
+end

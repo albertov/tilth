@@ -24,7 +24,12 @@
             pname = cargoToml.package.name;
             inherit (cargoToml.package) version;
             src = ./.;
-            cargoLock.lockFile = ./Cargo.lock;
+            cargoLock = {
+              lockFile = ./Cargo.lock;
+              outputHashes = {
+                "tree-sitter-rescript-0.0.1" = "sha256-A1u3CCJw6Rqsr6SLqVjYIr6spd7prLF4AMmA79N+8tQ=";
+              };
+            };
             meta = {
               inherit (cargoToml.package) description;
               homepage = "https://github.com/jahala/tilth";

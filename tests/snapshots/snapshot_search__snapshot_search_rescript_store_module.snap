@@ -1,0 +1,15 @@
+---
+source: tests/snapshot_search.rs
+expression: "search_fixture(\"Store\")"
+---
+# Search: "Store" in tests/fixtures/polyglot-project — 2 matches (1 definitions, 1 usages)
+
+## tests/fixtures/polyglot-project/src/Store.res:1-485 [definition]
+→ [1-278]      mod Store
+    [1]          type status
+    [3-10]       type item
+
+## tests/fixtures/polyglot-project/src/Store.res:248 [usage]
+→ [1-278]      mod Store
+    [1]          type status
+    [3-10]       type item

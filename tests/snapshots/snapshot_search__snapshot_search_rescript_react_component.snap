@@ -1,0 +1,20 @@
+---
+source: tests/snapshot_search.rs
+expression: "search_fixture(\"Button\")"
+---
+# Search: "Button" in tests/fixtures/polyglot-project — 3 matches (3 definitions, 0 usages)
+
+## tests/fixtures/polyglot-project/src/Button.res:1-13 [definition]
+→ [1-13]       mod Button
+    [1]          type color
+    [3]          let defaultColor
+
+## tests/fixtures/polyglot-project/src/component.tsx:6-8 [definition]
+  [1-4]        interface ButtonProps
+→ [6-8]        export export function Button({ label, onClick }: ButtonProps) {
+  [10-12]      export export function Badge({ text }: { text: string }) {
+
+## tests/fixtures/polyglot-project/src/component.tsx:6-8 [definition]
+  [1-4]        interface ButtonProps
+→ [6-8]        export export function Button({ label, onClick }: ButtonProps) {
+  [10-12]      export export function Badge({ text }: { text: string }) {

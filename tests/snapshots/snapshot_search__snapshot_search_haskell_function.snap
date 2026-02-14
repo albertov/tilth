@@ -1,0 +1,12 @@
+---
+source: tests/snapshot_search.rs
+expression: "search_fixture(\"tokenize\")"
+---
+# Search: "tokenize" in tests/fixtures/polyglot-project — 1 matches (1 definitions, 0 usages)
+
+## tests/fixtures/polyglot-project/src/Parser.hs:7-14 [definition]
+  [3-]   imports: Data.Char
+  [5]          enum Token
+→ [7-14]       fn tokenize
+             tokenize :: String -> [Token]
+  [16-17]      interface Parseable
