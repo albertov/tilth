@@ -24,6 +24,12 @@ fn snapshot_search_rescript_component() {
 }
 
 #[test]
+fn snapshot_search_rescript_react_component() {
+    // "Button" is the React component name (derived from filename)
+    insta::assert_snapshot!(search_fixture("Button"));
+}
+
+#[test]
 fn snapshot_search_rescript_type() {
     insta::assert_snapshot!(search_fixture("color"));
 }
