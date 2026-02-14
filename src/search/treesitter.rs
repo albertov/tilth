@@ -34,6 +34,15 @@ pub(crate) const DEFINITION_KINDS: &[&str] = &[
     "type_declaration",
     // Exports
     "export_statement",
+    // Haskell
+    "function",
+    "bind",
+    "data_type",
+    "newtype",
+    "type_synomym",
+    "class",
+    "instance",
+    "signature",
 ];
 
 /// Extract the name defined by a tree-sitter definition node.

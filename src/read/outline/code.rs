@@ -56,7 +56,15 @@ pub(crate) fn walk_top_level(
     let mut cursor = root.walk();
 
     for child in root.children(&mut cursor) {
-        if let Some(entry) = node_to_entry(child, lines, lang, 0) {
+        // Haskell wraps declarations in `declarations` and `imports` wrapper nodes
+        if matches!(lang, Lang::Haskell) && matches!(child.kind(), "declarations" | "imports") {
+            let mut inner_cursor = child.walk();
+            for inner in child.children(&mut inner_cursor) {
+                if let Some(entry) = node_to_entry(inner, lines, lang, 0) {
+                    entries.push(entry);
+                }
+            }
+        } else if let Some(entry) = node_to_entry(child, lines, lang, 0) {
             entries.push(entry);
         }
     }
@@ -149,6 +157,70 @@ fn node_to_entry(
         "mod_item" | "module" => {
             let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<module>".into());
             (OutlineKind::Module, name, None)
+        }
+
+        // Haskell: functions and type signatures
+        "function" | "bind" => {
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
+            let sig = extract_signature(node, lines);
+            (OutlineKind::Function, name, Some(sig))
+        }
+        "signature" => {
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
+            let sig = extract_signature(node, lines);
+            (OutlineKind::Function, name, Some(sig))
+        }
+
+        // Haskell: data types
+        "data_type" => {
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
+            (OutlineKind::Enum, name, None)
+        }
+
+        // Haskell: newtype
+        "newtype" => {
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
+            (OutlineKind::Struct, name, None)
+        }
+
+        // Haskell: type alias (NOTE: misspelled in grammar as "type_synomym")
+        "type_synomym" => {
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
+            (OutlineKind::TypeAlias, name, None)
+        }
+
+        // Haskell: type class
+        "class" => {
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
+            (OutlineKind::Interface, name, None)
+        }
+
+        // Haskell: type class instance
+        "instance" => {
+            let class_name =
+                find_child_text(node, "name", lines).unwrap_or_else(|| "<instance>".into());
+            let type_name = find_child_text(node, "patterns", lines).unwrap_or_default();
+            let display_name = if type_name.is_empty() {
+                class_name
+            } else {
+                format!("{class_name} {type_name}")
+            };
+            (OutlineKind::Class, display_name, None)
+        }
+
+        // Haskell: foreign import (nested: foreign_import → signature → name)
+        "foreign_import" => {
+            let name = node
+                .child_by_field_name("signature")
+                .and_then(|sig| find_child_text(sig, "name", lines))
+                .unwrap_or_else(|| node_text(node, lines));
+            (OutlineKind::Import, name, None)
+        }
+
+        // Haskell: import declaration
+        "import" => {
+            let text = node_text(node, lines);
+            (OutlineKind::Import, text, None)
         }
 
         _ => return None,
@@ -405,6 +477,20 @@ pub(crate) fn extract_import_source(text: &str) -> String {
             .to_string();
     }
 
+    // Python: `from module import ...` or `import module`
+    if let Some(rest) = trimmed.strip_prefix("from ") {
+        return rest.split_whitespace().next().unwrap_or("").to_string();
+    }
+    // Haskell: `import [qualified] Module [as Alias] [(items)]`
+    if let Some(rest) = trimmed.strip_prefix("import ") {
+        let rest = rest.strip_prefix("qualified ").unwrap_or(rest);
+        if let Some(module) = rest.split_whitespace().next() {
+            // Haskell modules start uppercase
+            if module.chars().next().map_or(false, |c| c.is_uppercase()) {
+                return module.to_string();
+            }
+        }
+    }
     // JS/TS: `import ... from "source"` or `import "source"`
     if trimmed.starts_with("import") {
         if let Some(from_pos) = trimmed.find("from ") {
@@ -421,11 +507,7 @@ pub(crate) fn extract_import_source(text: &str) -> String {
             .trim_matches(|c| c == '"' || c == '\'' || c == ';')
             .to_string();
     }
-
-    // Python: `from module import ...` or `import module`
-    if let Some(rest) = trimmed.strip_prefix("from ") {
-        return rest.split_whitespace().next().unwrap_or("").to_string();
-    }
+    // Generic Python-style `import module` (after Haskell handler)
     if let Some(rest) = trimmed.strip_prefix("import ") {
         return rest.split_whitespace().next().unwrap_or("").to_string();
     }
@@ -520,5 +602,129 @@ mod tests {
         parser
             .set_language(&lang.unwrap())
             .expect("ReScript grammar should initialize parser");
+    }
+
+    // HASKELL_TREE_SITTER.FR-3, SC-3.1-SC-3.5: "Outline extracts all Haskell declaration types"
+    #[test]
+    fn test_haskell_outline_declarations() {
+        let source = r#"module Main where
+
+import Data.Map.Strict
+import qualified Data.Text as T
+
+data Color = Red | Green | Blue
+
+newtype Name = Name String
+
+type Alias = String
+
+class Printable a where
+  display :: a -> String
+
+instance Printable Color where
+  display Red = "red"
+
+add :: Int -> Int -> Int
+add x y = x + y
+"#;
+        let entries = {
+            let lang_ts = outline_language(Lang::Haskell).unwrap();
+            let mut parser = tree_sitter::Parser::new();
+            parser.set_language(&lang_ts).unwrap();
+            let tree = parser.parse(source, None).unwrap();
+            let root = tree.root_node();
+            let lines: Vec<&str> = source.lines().collect();
+            walk_top_level(root, &lines, Lang::Haskell)
+        };
+
+        // Collect (kind, name) pairs
+        let items: Vec<(OutlineKind, &str)> = entries
+            .iter()
+            .map(|e| (e.kind.clone(), e.name.as_str()))
+            .collect();
+
+        // SC-3.5: declarations wrapper is transparent — we get actual decl nodes
+        assert!(
+            !entries.is_empty(),
+            "Should extract declarations through wrapper"
+        );
+
+        // Imports
+        assert!(
+            items.iter().any(|(k, _)| *k == OutlineKind::Import),
+            "Should have imports"
+        );
+
+        // SC-3.2: data_type → Enum
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Enum && *n == "Color"),
+            "data_type 'Color' should map to Enum"
+        );
+
+        // SC-3.4: newtype → Struct
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Struct && *n == "Name"),
+            "newtype 'Name' should map to Struct"
+        );
+
+        // SC-3.4: type_synomym → TypeAlias
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::TypeAlias && *n == "Alias"),
+            "type synonym 'Alias' should map to TypeAlias"
+        );
+
+        // SC-3.3: class → Interface
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Interface && *n == "Printable"),
+            "class 'Printable' should map to Interface"
+        );
+
+        // SC-3.3: instance → Class
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Class && n.contains("Printable")),
+            "instance should map to Class with class name"
+        );
+
+        // SC-3.1: function → Function
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Function && *n == "add"),
+            "function 'add' should map to Function"
+        );
+    }
+
+    // EDGE-1: "Empty Haskell file → empty outline"
+    #[test]
+    fn test_haskell_empty_file() {
+        let source = "";
+        let result = outline(source, Lang::Haskell, 100);
+        assert!(
+            result.is_empty(),
+            "Empty Haskell file should produce empty outline"
+        );
+    }
+
+    // HASKELL_TREE_SITTER.FR-5, SC-5.1: "import source extraction for Haskell"
+    #[test]
+    fn test_haskell_import_source_extraction() {
+        assert_eq!(
+            extract_import_source("import Data.Map.Strict"),
+            "Data.Map.Strict"
+        );
+        assert_eq!(
+            extract_import_source("import qualified Data.Text as T"),
+            "Data.Text"
+        );
     }
 }
