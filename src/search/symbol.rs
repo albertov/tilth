@@ -5,7 +5,8 @@ use std::sync::Mutex;
 use std::time::SystemTime;
 
 use super::file_metadata;
-use super::treesitter::{extract_definition_name, DEFINITION_KINDS};
+use super::treesitter::extract_definition_name;
+pub(crate) use super::treesitter::DEFINITION_KINDS;
 
 use crate::error::TilthError;
 use crate::read::detect_file_type;

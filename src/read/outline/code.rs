@@ -1276,4 +1276,304 @@ let make = (~name: string) => {
         // May produce partial results or empty, but should not crash
         let _ = result;
     }
+
+    // HASKELL_TREE_SITTER.FR-4, SC-4.1, SC-4.2: "Symbol search finds Haskell definitions"
+    #[test]
+    fn test_haskell_symbol_search_definitions() {
+        use crate::search::symbol::DEFINITION_KINDS;
+
+        // SC-4.1: data_type in DEFINITION_KINDS
+        assert!(
+            DEFINITION_KINDS.contains(&"data_type"),
+            "data_type should be in DEFINITION_KINDS"
+        );
+        assert!(
+            DEFINITION_KINDS.contains(&"newtype"),
+            "newtype should be in DEFINITION_KINDS"
+        );
+        assert!(
+            DEFINITION_KINDS.contains(&"type_synomym"),
+            "type_synomym should be in DEFINITION_KINDS"
+        );
+        assert!(
+            DEFINITION_KINDS.contains(&"class"),
+            "class should be in DEFINITION_KINDS"
+        );
+        assert!(
+            DEFINITION_KINDS.contains(&"instance"),
+            "instance should be in DEFINITION_KINDS"
+        );
+
+        // SC-4.2: function/signature in DEFINITION_KINDS
+        assert!(
+            DEFINITION_KINDS.contains(&"function"),
+            "function should be in DEFINITION_KINDS"
+        );
+        assert!(
+            DEFINITION_KINDS.contains(&"bind"),
+            "bind should be in DEFINITION_KINDS"
+        );
+        assert!(
+            DEFINITION_KINDS.contains(&"signature"),
+            "signature should be in DEFINITION_KINDS"
+        );
+    }
+
+    // RESCRIPT_TREE_SITTER.FR-4, SC-4.1-4.3: "Symbol search finds ReScript definitions"
+    #[test]
+    fn test_rescript_symbol_search_definitions() {
+        use crate::search::symbol::DEFINITION_KINDS;
+
+        // SC-4.1: type_declaration already in DEFINITION_KINDS (for Go)
+        assert!(
+            DEFINITION_KINDS.contains(&"type_declaration"),
+            "type_declaration should be in DEFINITION_KINDS"
+        );
+
+        // SC-4.2: let_declaration in DEFINITION_KINDS
+        assert!(
+            DEFINITION_KINDS.contains(&"let_declaration"),
+            "let_declaration should be in DEFINITION_KINDS"
+        );
+
+        // SC-4.3: module_declaration in DEFINITION_KINDS
+        assert!(
+            DEFINITION_KINDS.contains(&"module_declaration"),
+            "module_declaration should be in DEFINITION_KINDS"
+        );
+
+        // Also check external and exception
+        assert!(
+            DEFINITION_KINDS.contains(&"external_declaration"),
+            "external_declaration should be in DEFINITION_KINDS"
+        );
+        assert!(
+            DEFINITION_KINDS.contains(&"exception_declaration"),
+            "exception_declaration should be in DEFINITION_KINDS"
+        );
+    }
+
+    // RESCRIPT_TREE_SITTER.FR-3: Record type declarations
+    #[test]
+    fn test_rescript_record_type() {
+        let source = r#"type user = {name: string, age: int, email: string}
+
+type config = {
+  debug: bool,
+  port: int,
+  host: string,
+}
+"#;
+        let entries = {
+            let lang_ts = outline_language(Lang::ReScript).unwrap();
+            let mut parser = tree_sitter::Parser::new();
+            parser.set_language(&lang_ts).unwrap();
+            let tree = parser.parse(source, None).unwrap();
+            let root = tree.root_node();
+            let lines: Vec<&str> = source.lines().collect();
+            walk_top_level(root, &lines, Lang::ReScript)
+        };
+
+        assert_eq!(entries.len(), 2, "Should find 2 type declarations");
+        assert!(entries.iter().all(|e| e.kind == OutlineKind::TypeAlias));
+        assert!(entries.iter().any(|e| e.name == "user"));
+        assert!(entries.iter().any(|e| e.name == "config"));
+    }
+
+    // RESCRIPT_TREE_SITTER.FR-3: Nested module declarations
+    #[test]
+    fn test_rescript_nested_modules() {
+        let source = r#"module Outer = {
+  let x = 1
+
+  module Inner = {
+    let y = 2
+  }
+}
+"#;
+        let entries = {
+            let lang_ts = outline_language(Lang::ReScript).unwrap();
+            let mut parser = tree_sitter::Parser::new();
+            parser.set_language(&lang_ts).unwrap();
+            let tree = parser.parse(source, None).unwrap();
+            let root = tree.root_node();
+            let lines: Vec<&str> = source.lines().collect();
+            walk_top_level(root, &lines, Lang::ReScript)
+        };
+
+        assert_eq!(entries.len(), 1, "Should find 1 top-level module");
+        assert_eq!(entries[0].name, "Outer");
+        assert_eq!(entries[0].kind, OutlineKind::Module);
+    }
+
+    // EDGE-2: "Decorated declarations without @react.component parse correctly"
+    #[test]
+    fn test_rescript_decorated_non_component() {
+        let source = r#"@module("fs")
+external readFile: string => string = "readFileSync"
+
+@deprecated("Use newHelper instead")
+let oldHelper = () => "old"
+
+@genType
+type status = Active | Inactive
+"#;
+        let entries = {
+            let lang_ts = outline_language(Lang::ReScript).unwrap();
+            let mut parser = tree_sitter::Parser::new();
+            parser.set_language(&lang_ts).unwrap();
+            let tree = parser.parse(source, None).unwrap();
+            let root = tree.root_node();
+            let lines: Vec<&str> = source.lines().collect();
+            walk_top_level(root, &lines, Lang::ReScript)
+        };
+
+        // All declarations should be present regardless of decorators
+        assert!(
+            entries
+                .iter()
+                .any(|e| e.kind == OutlineKind::Function && e.name == "readFile"),
+            "external with @module should be found"
+        );
+        assert!(
+            entries.iter().any(|e| e.name == "oldHelper"),
+            "@deprecated function should be found"
+        );
+        assert!(
+            entries
+                .iter()
+                .any(|e| e.kind == OutlineKind::TypeAlias && e.name == "status"),
+            "@genType type should be found"
+        );
+
+        // No JSX children should be collected for non-@react.component functions
+        for entry in &entries {
+            assert!(
+                entry.children.is_empty(),
+                "Non-@react.component '{}' should have no JSX children",
+                entry.name
+            );
+        }
+    }
+
+    // RESCRIPT_TREE_SITTER.FR-7: Multiple @react.component in one file
+    #[test]
+    fn test_rescript_multiple_components() {
+        let source = r#"@react.component
+let header = (~title: string) => {
+  <nav> <h1> {React.string(title)} </h1> </nav>
+}
+
+let helper = () => "not a component"
+
+@react.component
+let footer = (~copyright: string) => {
+  <footer> {React.string(copyright)} </footer>
+}
+"#;
+        let entries = {
+            let lang_ts = outline_language(Lang::ReScript).unwrap();
+            let mut parser = tree_sitter::Parser::new();
+            parser.set_language(&lang_ts).unwrap();
+            let tree = parser.parse(source, None).unwrap();
+            let root = tree.root_node();
+            let lines: Vec<&str> = source.lines().collect();
+            walk_top_level(root, &lines, Lang::ReScript)
+        };
+
+        assert_eq!(entries.len(), 3, "Should find 3 declarations");
+
+        let header = entries.iter().find(|e| e.name == "header").unwrap();
+        assert!(
+            !header.children.is_empty(),
+            "header component should have JSX children"
+        );
+
+        let helper = entries.iter().find(|e| e.name == "helper").unwrap();
+        assert!(
+            helper.children.is_empty(),
+            "helper should have no JSX children"
+        );
+
+        let footer = entries.iter().find(|e| e.name == "footer").unwrap();
+        assert!(
+            !footer.children.is_empty(),
+            "footer component should have JSX children"
+        );
+    }
+
+    // HASKELL_TREE_SITTER.FR-3: Complex Haskell module with GADTs-like syntax
+    #[test]
+    fn test_haskell_complex_module() {
+        let source = r#"module Data.Config where
+
+import Control.Monad.IO.Class
+import qualified Data.Text as T
+import Data.Map.Strict (Map, fromList, lookup)
+
+data AppConfig = AppConfig
+  { configPort :: Int
+  , configHost :: String
+  , configDebug :: Bool
+  }
+
+newtype AppM a = AppM { runAppM :: IO a }
+
+type Handler = AppConfig -> IO ()
+
+class HasConfig a where
+  getConfig :: a -> AppConfig
+
+instance HasConfig AppConfig where
+  getConfig = id
+
+startApp :: AppConfig -> IO ()
+startApp config = putStrLn "Starting..."
+"#;
+        let entries = {
+            let lang_ts = outline_language(Lang::Haskell).unwrap();
+            let mut parser = tree_sitter::Parser::new();
+            parser.set_language(&lang_ts).unwrap();
+            let tree = parser.parse(source, None).unwrap();
+            let root = tree.root_node();
+            let lines: Vec<&str> = source.lines().collect();
+            walk_top_level(root, &lines, Lang::Haskell)
+        };
+
+        // Check we get a good outline of this complex module
+        assert!(
+            entries.len() >= 7,
+            "Should find at least 7 declarations (3 imports + data + newtype + type + class + instance + function)"
+        );
+        assert!(
+            entries
+                .iter()
+                .any(|e| e.kind == OutlineKind::Enum && e.name == "AppConfig"),
+            "data AppConfig should map to Enum"
+        );
+        assert!(
+            entries
+                .iter()
+                .any(|e| e.kind == OutlineKind::Struct && e.name == "AppM"),
+            "newtype AppM should map to Struct"
+        );
+        assert!(
+            entries
+                .iter()
+                .any(|e| e.kind == OutlineKind::TypeAlias && e.name == "Handler"),
+            "type Handler should map to TypeAlias"
+        );
+        assert!(
+            entries
+                .iter()
+                .any(|e| e.kind == OutlineKind::Interface && e.name == "HasConfig"),
+            "class HasConfig should map to Interface"
+        );
+        assert!(
+            entries
+                .iter()
+                .any(|e| e.kind == OutlineKind::Function && e.name == "startApp"),
+            "function startApp should map to Function"
+        );
+    }
 }
