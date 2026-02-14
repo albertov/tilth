@@ -46,6 +46,81 @@ pub fn outline_language(lang: Lang) -> Option<tree_sitter::Language> {
     Some(lang.into())
 }
 
+/// Find the first child with a specific node kind and return its text.
+fn first_child_by_kind(node: tree_sitter::Node, kind: &str, lines: &[&str]) -> Option<String> {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == kind {
+            return Some(node_text(child, lines));
+        }
+    }
+    None
+}
+
+/// Extract name from ReScript declaration nodes.
+/// Handles the _declaration → _binding → name/pattern nesting pattern.
+fn rescript_binding_name(node: tree_sitter::Node, lines: &[&str]) -> Option<String> {
+    match node.kind() {
+        "let_declaration" => {
+            // let_declaration → let_binding → pattern(value_identifier)
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                if child.kind() == "let_binding" {
+                    return find_child_text(child, "pattern", lines)
+                        .or_else(|| find_child_text(child, "name", lines));
+                }
+            }
+            None
+        }
+        "type_declaration" => {
+            // type_declaration → type_binding → name(type_identifier)
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                if child.kind() == "type_binding" {
+                    return find_child_text(child, "name", lines);
+                }
+            }
+            None
+        }
+        "module_declaration" => {
+            // module_declaration → module_binding → name(module_identifier)
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                if child.kind() == "module_binding" {
+                    return find_child_text(child, "name", lines);
+                }
+            }
+            None
+        }
+        "external_declaration" => {
+            // FLAT: direct child value_identifier
+            first_child_by_kind(node, "value_identifier", lines)
+        }
+        "exception_declaration" => {
+            // FLAT: direct child variant_identifier
+            first_child_by_kind(node, "variant_identifier", lines)
+        }
+        "open_statement" => {
+            // direct child module_identifier
+            first_child_by_kind(node, "module_identifier", lines)
+        }
+        _ => None,
+    }
+}
+
+/// Check if a ReScript let_binding has a function body (arrow or function expression).
+fn rescript_let_is_function(node: tree_sitter::Node) -> bool {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "let_binding" {
+            if let Some(body) = child.child_by_field_name("body") {
+                return matches!(body.kind(), "function" | "arrow_function");
+            }
+        }
+    }
+    false
+}
+
 /// Walk top-level children of the root node, extracting outline entries.
 pub(crate) fn walk_top_level(
     root: tree_sitter::Node,
@@ -221,6 +296,47 @@ fn node_to_entry(
         "import" => {
             let text = node_text(node, lines);
             (OutlineKind::Import, text, None)
+        }
+
+        // ReScript: let declarations (function or variable)
+        "let_declaration" => {
+            let name = rescript_binding_name(node, lines).unwrap_or_else(|| "<anonymous>".into());
+            if rescript_let_is_function(node) {
+                let sig = extract_signature(node, lines);
+                (OutlineKind::Function, name, Some(sig))
+            } else {
+                (OutlineKind::Variable, name, None)
+            }
+        }
+
+        // ReScript: type declarations (guarded to avoid Go conflicts)
+        "type_declaration" if matches!(lang, Lang::ReScript) => {
+            let name = rescript_binding_name(node, lines).unwrap_or_else(|| "<anonymous>".into());
+            (OutlineKind::TypeAlias, name, None)
+        }
+
+        // ReScript: module declarations
+        "module_declaration" => {
+            let name = rescript_binding_name(node, lines).unwrap_or_else(|| "<module>".into());
+            (OutlineKind::Module, name, None)
+        }
+
+        // ReScript: external declarations
+        "external_declaration" => {
+            let name = rescript_binding_name(node, lines).unwrap_or_else(|| "<external>".into());
+            (OutlineKind::Function, name, None)
+        }
+
+        // ReScript: open statements → imports
+        "open_statement" => {
+            let name = rescript_binding_name(node, lines).unwrap_or_else(|| node_text(node, lines));
+            (OutlineKind::Import, name, None)
+        }
+
+        // ReScript: exception declarations
+        "exception_declaration" => {
+            let name = rescript_binding_name(node, lines).unwrap_or_else(|| "<exception>".into());
+            (OutlineKind::Enum, name, None)
         }
 
         _ => return None,
@@ -475,6 +591,11 @@ pub(crate) fn extract_import_source(text: &str) -> String {
             .trim()
             .trim_end_matches("::")
             .to_string();
+    }
+
+    // ReScript: `open Module` → `Module`
+    if let Some(rest) = trimmed.strip_prefix("open ") {
+        return rest.split_whitespace().next().unwrap_or("").to_string();
     }
 
     // Python: `from module import ...` or `import module`
@@ -741,6 +862,146 @@ add x y = x + y
         assert_eq!(
             extract_import_source(r#"import { useState } from "react""#),
             "react"
+        );
+    }
+
+    // RESCRIPT_TREE_SITTER.FR-3, SC-3.1-SC-3.6: "Outline extracts all ReScript declaration types"
+    #[test]
+    fn test_rescript_outline_declarations() {
+        let source = r#"let name = "hello"
+
+let add = (x, y) => x + y
+
+type color = Red | Green | Blue
+
+module Utils = {
+  let helper = () => "help"
+}
+
+external alert: string => unit = "alert"
+
+open Belt
+
+exception NotFound(string)
+"#;
+        let entries = {
+            let lang_ts = outline_language(Lang::ReScript).unwrap();
+            let mut parser = tree_sitter::Parser::new();
+            parser.set_language(&lang_ts).unwrap();
+            let tree = parser.parse(source, None).unwrap();
+            let root = tree.root_node();
+            let lines: Vec<&str> = source.lines().collect();
+            walk_top_level(root, &lines, Lang::ReScript)
+        };
+
+        let items: Vec<(OutlineKind, &str)> = entries
+            .iter()
+            .map(|e| (e.kind.clone(), e.name.as_str()))
+            .collect();
+
+        assert!(!entries.is_empty(), "Should extract ReScript declarations");
+
+        // SC-3.1: let value → Variable
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Variable && *n == "name"),
+            "let value 'name' should map to Variable"
+        );
+
+        // SC-3.1: let function → Function
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Function && *n == "add"),
+            "let function 'add' should map to Function"
+        );
+
+        // SC-3.2: type_declaration → TypeAlias
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::TypeAlias && *n == "color"),
+            "type 'color' should map to TypeAlias"
+        );
+
+        // SC-3.3: module_declaration → Module
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Module && *n == "Utils"),
+            "module 'Utils' should map to Module"
+        );
+
+        // SC-3.4: external_declaration → Function
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Function && *n == "alert"),
+            "external 'alert' should map to Function"
+        );
+
+        // SC-3.5: open_statement → Import
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Import && *n == "Belt"),
+            "open 'Belt' should map to Import"
+        );
+
+        // SC-3.6: exception_declaration → Enum
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Enum && *n == "NotFound"),
+            "exception 'NotFound' should map to Enum"
+        );
+    }
+
+    // EDGE-3: "Empty ReScript file → empty outline"
+    #[test]
+    fn test_rescript_empty_file() {
+        let source = "";
+        let result = outline(source, Lang::ReScript, 100);
+        assert!(
+            result.is_empty(),
+            "Empty ReScript file should produce empty outline"
+        );
+    }
+
+    // RESCRIPT_TREE_SITTER.FR-5, SC-5.1: "import source extraction for ReScript open"
+    #[test]
+    fn test_rescript_open_import_source() {
+        assert_eq!(extract_import_source("open Belt"), "Belt");
+        assert_eq!(extract_import_source("open RescriptCore"), "RescriptCore");
+    }
+
+    // EDGE-1, SC-E1.1: ".resi interface files parse correctly"
+    #[test]
+    fn test_rescript_interface_file() {
+        let source = r#"type color = Red | Green | Blue
+let add: (int, int) => int
+external alert: string => unit = "alert"
+"#;
+        let entries = {
+            let lang_ts = outline_language(Lang::ReScript).unwrap();
+            let mut parser = tree_sitter::Parser::new();
+            parser.set_language(&lang_ts).unwrap();
+            let tree = parser.parse(source, None).unwrap();
+            let root = tree.root_node();
+            let lines: Vec<&str> = source.lines().collect();
+            walk_top_level(root, &lines, Lang::ReScript)
+        };
+
+        assert!(
+            !entries.is_empty(),
+            "ReScript interface file should produce entries"
+        );
+        assert!(
+            entries
+                .iter()
+                .any(|e| e.kind == OutlineKind::TypeAlias && e.name == "color"),
+            "Should find type declaration in .resi"
         );
     }
 }

@@ -43,6 +43,11 @@ pub(crate) const DEFINITION_KINDS: &[&str] = &[
     "class",
     "instance",
     "signature",
+    // ReScript
+    "let_declaration",
+    "module_declaration",
+    "external_declaration",
+    "exception_declaration",
 ];
 
 /// Extract the name defined by a tree-sitter definition node.
