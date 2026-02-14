@@ -1,0 +1,20 @@
+---
+source: tests/snapshot_map.rs
+expression: result
+---
+# Map: tests/fixtures/polyglot-project (depth 1)
+Dockerfile (~20 tokens)
+Makefile (~22 tokens)
+src/
+  core.py: Pipeline, __init__, run, create_pipeline
+  component.tsx: ButtonProps, Button, Badge
+  app.ts: AppConfig, createApp, VERSION
+  Parser.hs: Token, tokenize, tokenize, tokenize, Parseable
+  utils.js: debounce, EventBus
+  lib.c (~55 tokens)
+  engine.cpp (~62 tokens)
+  Button.res: color, Theme, make
+  server.go: NewHandler, ServeHTTP
+  main.rs: Config, initialize, Status
+  App.java: App, main
+  helper.rb: StringHelper
