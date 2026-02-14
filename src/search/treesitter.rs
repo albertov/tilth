@@ -71,6 +71,36 @@ pub(crate) fn extract_definition_name(node: tree_sitter::Node, lines: &[&str]) -
         }
     }
 
+    // ReScript: handle nested binding structure
+    match node.kind() {
+        "type_declaration" => {
+            // type_declaration -> type_binding -> name(type_identifier)
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                if child.kind() == "type_binding" {
+                    if let Some(name) = child.child_by_field_name("name") {
+                        return Some(node_text_simple(name, lines));
+                    }
+                }
+            }
+        }
+        "let_declaration" => {
+            // let_declaration -> let_binding -> value_identifier
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                if child.kind() == "let_binding" {
+                    let mut binding_cursor = child.walk();
+                    for binding_child in child.children(&mut binding_cursor) {
+                        if binding_child.kind() == "value_identifier" {
+                            return Some(node_text_simple(binding_child, lines));
+                        }
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+
     // For export_statement, check the declaration child
     if node.kind() == "export_statement" {
         let mut cursor = node.walk();

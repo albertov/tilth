@@ -217,6 +217,7 @@ fn find_defs_treesitter(
                     file_lines,
                     mtime,
                     def_range: Some((1, end_line)),
+                    def_name: Some(stem.to_string()),
                 });
             }
         }
