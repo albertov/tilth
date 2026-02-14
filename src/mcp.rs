@@ -296,20 +296,33 @@ fn tool_search(args: &Value, cache: &OutlineCache, session: &Session) -> Result<
 
     let output = match kind {
         "symbol" => {
-            let queries: Vec<&str> = query.split(',').map(str::trim).filter(|s| !s.is_empty()).collect();
+            let queries: Vec<&str> = query
+                .split(',')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .collect();
             match queries.len() {
                 0 => return Err("missing required parameter: query".into()),
                 1 => {
                     session.record_search(queries[0]);
-                    crate::search::search_symbol_expanded(queries[0], &scope, cache, session, expand, context)
+                    crate::search::search_symbol_expanded(
+                        queries[0], &scope, cache, session, expand, context,
+                    )
                 }
                 2..=5 => {
                     for q in &queries {
                         session.record_search(q);
                     }
-                    crate::search::search_multi_symbol_expanded(&queries, &scope, cache, session, expand, context)
+                    crate::search::search_multi_symbol_expanded(
+                        &queries, &scope, cache, session, expand, context,
+                    )
                 }
-                _ => return Err(format!("multi-symbol search limited to 5 queries (got {})", queries.len())),
+                _ => {
+                    return Err(format!(
+                        "multi-symbol search limited to 5 queries (got {})",
+                        queries.len()
+                    ))
+                }
             }
         }
         "content" => {
@@ -324,7 +337,9 @@ fn tool_search(args: &Value, cache: &OutlineCache, session: &Session) -> Result<
         }
         "callers" => {
             session.record_search(query);
-            crate::search::callers::search_callers_expanded(query, &scope, cache, session, expand, context)
+            crate::search::callers::search_callers_expanded(
+                query, &scope, cache, session, expand, context,
+            )
         }
         _ => {
             return Err(format!(

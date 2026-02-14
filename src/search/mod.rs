@@ -130,7 +130,11 @@ pub fn search_multi_symbol_expanded(
 ) -> Result<String, TilthError> {
     // Shared expand budget: at least 1 slot per query, or explicit expand if higher.
     // expand=0 means no expansion at all.
-    let mut expand_remaining = if expand == 0 { 0 } else { expand.max(queries.len()) };
+    let mut expand_remaining = if expand == 0 {
+        0
+    } else {
+        expand.max(queries.len())
+    };
     let mut expanded_files = HashSet::new();
     let mut sections = Vec::with_capacity(queries.len());
 
@@ -153,7 +157,10 @@ pub fn search_multi_symbol_expanded(
         );
         if result.total_found > result.matches.len() {
             let omitted = result.total_found - result.matches.len();
-            let _ = write!(out, "\n\n... and {omitted} more matches. Narrow with scope.");
+            let _ = write!(
+                out,
+                "\n\n... and {omitted} more matches. Narrow with scope."
+            );
         }
         sections.push(out);
     }
@@ -246,7 +253,13 @@ fn format_matches(
         // Show line range for definitions with def_range, otherwise just the line
         if m.is_definition {
             if let Some((start, end)) = m.def_range {
-                let _ = write!(out, "\n\n## {}:{}-{} [{kind}]", m.path.display(), start, end);
+                let _ = write!(
+                    out,
+                    "\n\n## {}:{}-{} [{kind}]",
+                    m.path.display(),
+                    start,
+                    end
+                );
             } else {
                 let _ = write!(out, "\n\n## {}:{} [{kind}]", m.path.display(), m.line);
             }
@@ -272,7 +285,10 @@ fn format_matches(
                     let _ = write!(
                         out,
                         "\n\n[shown earlier] {}:{}-{} {}",
-                        m.path.display(), start, end, m.text
+                        m.path.display(),
+                        start,
+                        end,
+                        m.text
                     );
                 }
             } else {
@@ -299,7 +315,10 @@ fn format_matches(
                                     callees::extract_callee_names(&content, lang, m.def_range);
                                 if !callee_names.is_empty() {
                                     let mut resolved = callees::resolve_callees(
-                                        &callee_names, &m.path, &content, cache,
+                                        &callee_names,
+                                        &m.path,
+                                        &content,
+                                        cache,
                                     );
 
                                     // Filter out self-recursive calls (current function name)
@@ -309,9 +328,7 @@ fn format_matches(
 
                                     // Cap at 8, prioritize cross-file over same-file
                                     if resolved.len() > 8 {
-                                        resolved.sort_by_key(|c| {
-                                            i32::from(c.file == m.path)
-                                        });
+                                        resolved.sort_by_key(|c| i32::from(c.file == m.path));
                                         resolved.truncate(8);
                                     }
 
@@ -335,10 +352,9 @@ fn format_matches(
                             }
                         } else {
                             // Usage expansion: related file hints
-                            let related =
-                                crate::read::imports::resolve_related_files_with_content(
-                                    &m.path, &content,
-                                );
+                            let related = crate::read::imports::resolve_related_files_with_content(
+                                &m.path, &content,
+                            );
                             if !related.is_empty() {
                                 out.push_str("\n\n> Related: ");
                                 for (i, p) in related.iter().enumerate() {
@@ -380,13 +396,20 @@ fn format_search_result(
     let mut expand_remaining = expand;
     let mut expanded_files = HashSet::new();
     format_matches(
-        &result.matches, cache, session,
-        &mut expand_remaining, &mut expanded_files, &mut out,
+        &result.matches,
+        cache,
+        session,
+        &mut expand_remaining,
+        &mut expanded_files,
+        &mut out,
     );
 
     if result.total_found > result.matches.len() {
         let omitted = result.total_found - result.matches.len();
-        let _ = write!(out, "\n\n... and {omitted} more matches. Narrow with scope.");
+        let _ = write!(
+            out,
+            "\n\n... and {omitted} more matches. Narrow with scope."
+        );
     }
     Ok(out)
 }

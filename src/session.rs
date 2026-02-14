@@ -12,7 +12,7 @@ pub struct Session {
     maps: AtomicUsize,
     symbols: Mutex<HashMap<String, usize>>, // query → search count
     dir_hits: Mutex<HashMap<String, usize>>, // dir → count
-    expanded: Mutex<HashSet<String>>, // "path:line" → expanded status
+    expanded: Mutex<HashSet<String>>,       // "path:line" → expanded status
 }
 
 impl Session {

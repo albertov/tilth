@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use std::time::SystemTime;
 
 use super::file_metadata;
-use super::treesitter::{DEFINITION_KINDS, extract_definition_name};
+use super::treesitter::{extract_definition_name, DEFINITION_KINDS};
 
 use crate::error::TilthError;
 use crate::read::detect_file_type;
@@ -428,7 +428,8 @@ pub(crate) fn dispatch_tool(tool: &str) -> Result<String, String> {
     }
 }
 "#;
-        let ts_lang = crate::read::outline::code::outline_language(crate::types::Lang::Rust).unwrap();
+        let ts_lang =
+            crate::read::outline::code::outline_language(crate::types::Lang::Rust).unwrap();
 
         let defs = find_defs_treesitter(
             std::path::Path::new("test.rs"),

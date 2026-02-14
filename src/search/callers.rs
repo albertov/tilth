@@ -6,7 +6,7 @@ use std::sync::Mutex;
 
 use streaming_iterator::StreamingIterator;
 
-use super::treesitter::{DEFINITION_KINDS, extract_definition_name};
+use super::treesitter::{extract_definition_name, DEFINITION_KINDS};
 
 use crate::cache::OutlineCache;
 use crate::error::TilthError;
@@ -87,13 +87,7 @@ pub fn find_callers(target: &str, scope: &Path) -> Result<Vec<CallerMatch>, Tilt
                 return ignore::WalkState::Continue;
             };
 
-            let file_callers = find_callers_treesitter(
-                path,
-                target,
-                &ts_lang,
-                &content,
-                lang,
-            );
+            let file_callers = find_callers_treesitter(path, target, &ts_lang, &content, lang);
 
             if !file_callers.is_empty() {
                 found_count.fetch_add(file_callers.len(), Ordering::Relaxed);
@@ -213,8 +207,8 @@ fn find_enclosing_function(
 
         if DEFINITION_KINDS.contains(&kind) {
             // Extract the function name
-            let name = extract_definition_name(n, lines)
-                .unwrap_or_else(|| "<anonymous>".to_string());
+            let name =
+                extract_definition_name(n, lines).unwrap_or_else(|| "<anonymous>".to_string());
             let range = Some((
                 n.start_position().row as u32 + 1,
                 n.end_position().row as u32 + 1,
@@ -243,7 +237,8 @@ pub fn search_callers_expanded(
     if callers.is_empty() {
         return Ok(format!(
             "# Callers of \"{}\" in {} — no call sites found",
-            target, scope.display()
+            target,
+            scope.display()
         ));
     }
 
@@ -268,7 +263,11 @@ pub fn search_callers_expanded(
         let _ = write!(
             output,
             "\n## {}:{} [caller: {}]\n",
-            caller.path.strip_prefix(scope).unwrap_or(&caller.path).display(),
+            caller
+                .path
+                .strip_prefix(scope)
+                .unwrap_or(&caller.path)
+                .display(),
             caller.line,
             caller.calling_function
         );
@@ -324,7 +323,10 @@ fn rank_callers(callers: &mut [CallerMatch], scope: &Path, context: Option<&Path
         // Shorter paths (more similar to scope) rank higher
         let a_rel = a.path.strip_prefix(scope).unwrap_or(&a.path);
         let b_rel = b.path.strip_prefix(scope).unwrap_or(&b.path);
-        a_rel.components().count().cmp(&b_rel.components().count())
+        a_rel
+            .components()
+            .count()
+            .cmp(&b_rel.components().count())
             .then_with(|| a.path.cmp(&b.path))
             .then_with(|| a.line.cmp(&b.line))
     });
