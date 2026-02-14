@@ -40,7 +40,7 @@ pub fn search(
         || find_usages(query, &matcher, scope),
     );
 
-    let defs = defs?;
+    let defs = collapse_haskell_definition_blocks(defs?, query);
     let usages = usages?;
 
     // Deduplicate: remove usage matches that overlap with definition matches.
@@ -49,9 +49,20 @@ pub fn search(
     let def_count = merged.len();
 
     for m in usages {
-        let dominated = merged[..def_count]
-            .iter()
-            .any(|d| d.path == m.path && d.line == m.line);
+        let dominated = merged[..def_count].iter().any(|d| {
+            if d.path != m.path {
+                return false;
+            }
+            if d.line == m.line {
+                return true;
+            }
+            if is_haskell_path(&d.path) {
+                if let Some((start, end)) = d.def_range {
+                    return m.line >= start && m.line <= end;
+                }
+            }
+            false
+        });
         if !dominated {
             merged.push(m);
         }
@@ -71,6 +82,77 @@ pub fn search(
         definitions: def_count,
         usages: usage_count,
     })
+}
+
+fn collapse_haskell_definition_blocks(defs: Vec<Match>, query: &str) -> Vec<Match> {
+    let mut defs = defs;
+    defs.sort_by(|a, b| a.path.cmp(&b.path).then(a.line.cmp(&b.line)));
+
+    let mut collapsed = Vec::with_capacity(defs.len());
+
+    for def in defs {
+        let should_merge = is_haskell_path(&def.path)
+            && is_haskell_function_clause_match(&def, query)
+            && collapsed
+                .last()
+                .is_some_and(|prev| can_merge_haskell_function_block(prev, &def, query));
+
+        if should_merge {
+            let prev = collapsed
+                .last_mut()
+                .expect("checked with is_some_and above");
+            let (prev_start, prev_end) = match_range(prev);
+            let (next_start, next_end) = match_range(&def);
+            prev.def_range = Some((prev_start.min(next_start), prev_end.max(next_end)));
+            if def.line < prev.line {
+                prev.line = def.line;
+                prev.column = def.column;
+                prev.text = def.text;
+            }
+            continue;
+        }
+
+        collapsed.push(def);
+    }
+
+    collapsed
+}
+
+fn can_merge_haskell_function_block(prev: &Match, next: &Match, query: &str) -> bool {
+    prev.path == next.path
+        && is_haskell_function_clause_match(prev, query)
+        && is_haskell_function_clause_match(next, query)
+        && {
+            let (_, prev_end) = match_range(prev);
+            let (next_start, _) = match_range(next);
+            next_start <= prev_end.saturating_add(1)
+        }
+}
+
+fn match_range(m: &Match) -> (u32, u32) {
+    m.def_range.unwrap_or((m.line, m.line))
+}
+
+fn is_haskell_function_clause_match(m: &Match, query: &str) -> bool {
+    // A Haskell definition match is a function clause if the text starts with the
+    // query name. Tree-sitter already classified it as a definition kind (signature,
+    // function, bind), so we only need to confirm the name appears at the start.
+    // We can't require `=` or `::` because multi-line equations with guards may
+    // have those tokens on continuation lines not captured in `m.text`.
+    let text = m.text.trim_start();
+    if !text.starts_with(query) {
+        return false;
+    }
+    // After the name there should be whitespace, EOF, or a Haskell operator/delimiter
+    // (not an alphanumeric continuation, which would mean a longer name).
+    text[query.len()..]
+        .chars()
+        .next()
+        .map_or(true, |c| !c.is_alphanumeric() && c != '_' && c != '\'')
+}
+
+fn is_haskell_path(path: &Path) -> bool {
+    matches!(path.extension().and_then(|ext| ext.to_str()), Some("hs"))
 }
 
 /// Find definitions using tree-sitter structural detection.

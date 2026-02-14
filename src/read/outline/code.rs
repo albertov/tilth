@@ -163,7 +163,41 @@ pub(crate) fn walk_top_level(
         }
     }
 
+    // Haskell: coalesce consecutive Function entries with the same name
+    // (type signature + equation clauses) into a single outline entry.
+    if matches!(lang, Lang::Haskell) {
+        entries = coalesce_haskell_functions(entries);
+    }
+
     entries
+}
+
+/// Coalesce consecutive Haskell Function entries with the same name into one.
+/// A type signature followed by one or more equation clauses becomes a single
+/// entry whose line range spans the full block and whose signature comes from
+/// the type signature (if present) or the first equation.
+fn coalesce_haskell_functions(entries: Vec<OutlineEntry>) -> Vec<OutlineEntry> {
+    let mut coalesced: Vec<OutlineEntry> = Vec::with_capacity(entries.len());
+
+    for entry in entries {
+        let should_merge = matches!(entry.kind, OutlineKind::Function)
+            && coalesced.last().is_some_and(|prev| {
+                matches!(prev.kind, OutlineKind::Function) && prev.name == entry.name
+            });
+
+        if should_merge {
+            let prev = coalesced.last_mut().expect("checked with is_some_and");
+            prev.end_line = prev.end_line.max(entry.end_line);
+            // Prefer signature from type annotation (contains "::")
+            if entry.signature.as_ref().is_some_and(|s| s.contains("::")) {
+                prev.signature = entry.signature;
+            }
+        } else {
+            coalesced.push(entry);
+        }
+    }
+
+    coalesced
 }
 
 /// Convert a tree-sitter node to an `OutlineEntry` based on its kind.
