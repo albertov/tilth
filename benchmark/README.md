@@ -201,25 +201,67 @@ All modes use the same system prompt, $1.00 budget cap, and model. The agent exp
 
 ### Running benchmarks
 
+**Prerequisites:**
+- Python 3.9+
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI (`claude`) installed and authenticated
+- tilth installed (`cargo install tilth` or `npx tilth`)
+- Git (for cloning benchmark repos)
+
+**Setup:**
+
 ```bash
-# Setup: clone repos at pinned commits
+# Clone repos at pinned commits (~500MB total)
 python benchmark/fixtures/setup_repos.py
-
-# Run all 21 tasks, 3 reps, Sonnet
-python benchmark/run.py --tasks all_real --model sonnet --reps 3
-
-# Opus on hard tasks
-python benchmark/run.py --tasks fastapi_depends_processing,gin_middleware_chain,rg_search_dispatch --model opus --reps 3
-
-# Haiku forced mode
-python benchmark/run.py --tasks all_real --model haiku --reps 1 --modes tilth_forced
 ```
 
-Results are written to `benchmark/results/benchmark_<timestamp>_<model>.jsonl`.
+**Run:**
+
+```bash
+# All 21 tasks, baseline + tilth, 3 reps, Sonnet
+python benchmark/run.py --tasks all_real --model sonnet --reps 3
+
+# Specific tasks
+python benchmark/run.py --tasks fastapi_depends_processing,gin_middleware_chain --model sonnet --reps 3
+
+# Opus on hard tasks only
+python benchmark/run.py --tasks all_real --model opus --reps 3
+
+# Haiku forced mode (built-in search tools removed)
+python benchmark/run.py --tasks all_real --model haiku --reps 1 --modes tilth_forced
+
+# Single mode only (skip baseline comparison)
+python benchmark/run.py --tasks all_real --model sonnet --reps 1 --modes tilth
+```
+
+**Analyze:**
+
+```bash
+# Summarize results from a run
+python benchmark/analyze.py benchmark/results/benchmark_<timestamp>_<model>.jsonl
+
+# Compare two runs (e.g. different versions)
+python benchmark/compare_versions.py benchmark/results/old.jsonl benchmark/results/new.jsonl
+```
+
+Results are written to `benchmark/results/benchmark_<timestamp>_<model>.jsonl`. Each line is a JSON object with task name, mode, cost, token counts, correctness, and tool sequence.
 
 ### Task definitions
 
 Tasks are in `benchmark/tasks/`. Each specifies `repo`, `prompt`, `ground_truth` (correctness strings), and `difficulty`.
+
+### Contributing benchmarks
+
+We welcome benchmark contributions — more data makes the results more reliable.
+
+**Adding results:** Run the benchmark suite on your machine and share the `.jsonl` file in a GitHub issue or PR. Different hardware, API regions, and model versions can all affect results.
+
+**Adding tasks:** Create a new task class in `benchmark/tasks/` following the existing pattern. Each task needs:
+- `repo`: which benchmark repo to use
+- `prompt`: the code navigation question
+- `ground_truth`: list of strings that must appear in a correct answer
+- `difficulty`: `"easy"`, `"medium"`, or `"hard"`
+
+Good tasks have unambiguous correct answers that can be verified by string matching. Avoid tasks where the answer depends on interpretation.
 
 ## Version history
 
