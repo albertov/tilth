@@ -40,14 +40,14 @@
 
 ## 5. Acceptance Fixtures + Integration Coverage
 
-- [ ] 5.1 Create comprehensive ReScript 12 fixture matrix and end-to-end assertions
+- [x] 5.1 Create comprehensive ReScript 12 fixture matrix and end-to-end assertions
   - WHERE: new fixtures directory (ReScript + Haskell), integration test module(s) invoking real read/search flows
   - WHAT: Add at least 12 orthogonal ReScript 12 fixtures plus composed integration fixtures; assert declaration indexing + JSX semantic output stability
   - WHY: Support claims must be evidence-backed and regression-resistant
   - RED: Commit failing acceptance tests for the required fixture classes and expected semantic output snapshots
   - GREEN: Add/normalize fixtures and update implementation until acceptance suite is green
   - GATE: `RESCRIPT_TREE_SITTER.QA-1`
-  - STATUS: Partial. Added integration snapshots and ReScript fixtures (`Button.res`, `Store.res`) but have not reached a 12+ orthogonal ReScript fixture matrix.
+  - STATUS: Complete. Added 12 orthogonal ReScript .res fixtures plus 1 .resi fixture under tests/fixtures/rescript-matrix with integration snapshot tests in tests/snapshot_rescript_matrix.rs.
 
 ## 6. Regression Gate: Existing Languages + Stability
 
@@ -58,7 +58,7 @@
   - RED: Commit regression checks that fail if existing language behavior drifts
   - GREEN: Resolve regressions and pass full test suite in dev shell
   - GATE: `HASKELL_TREE_SITTER.NFR-1`, `RESCRIPT_TREE_SITTER.NFR-1`
-  - STATUS: Complete. Snapshot ordering drift was reconciled by updating `snapshot_search_rescript_component`; full regression run is now green (63 passed, 0 failed).
+  - STATUS: Complete. Snapshot ordering drift was reconciled by updating `snapshot_search_rescript_component`; full regression run is now green (71 passed, 0 failed).
 
 ## Dependency Order
 
