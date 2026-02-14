@@ -83,6 +83,11 @@ pub fn generate(scope: &Path, depth: usize, budget: Option<u64>, cache: &Outline
         });
     }
 
+    // Sort files within each directory for deterministic output
+    for files in tree.values_mut() {
+        files.sort_by(|a, b| a.name.cmp(&b.name));
+    }
+
     let mut out = format!("# Map: {} (depth {})\n", scope.display(), depth);
     format_tree(&tree, Path::new(""), 0, &mut out);
 
