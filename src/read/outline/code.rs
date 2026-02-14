@@ -36,6 +36,8 @@ pub fn outline_language(lang: Lang) -> Option<tree_sitter::Language> {
         Lang::C => tree_sitter_c::LANGUAGE,
         Lang::Cpp => tree_sitter_cpp::LANGUAGE,
         Lang::Ruby => tree_sitter_ruby::LANGUAGE,
+        Lang::Haskell => tree_sitter_haskell::LANGUAGE,
+        Lang::ReScript => tree_sitter_rescript::LANGUAGE,
         // Languages without shipped grammars — fall back
         Lang::Swift | Lang::Kotlin | Lang::CSharp | Lang::Dockerfile | Lang::Make => {
             return None;
@@ -492,4 +494,31 @@ fn format_entry(entry: &OutlineEntry, indent: usize) -> String {
 /// Fallback when tree-sitter grammar isn't available.
 fn fallback_outline(content: &str, _max_lines: usize) -> String {
     super::fallback::head_tail(content)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // HASKELL_TREE_SITTER.FR-2, SC-2.1: "outline_language(Haskell) → grammar loads + parser init"
+    #[test]
+    fn test_haskell_grammar_loads() {
+        let lang = outline_language(Lang::Haskell);
+        assert!(lang.is_some(), "Haskell grammar should be available");
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(&lang.unwrap())
+            .expect("Haskell grammar should initialize parser");
+    }
+
+    // RESCRIPT_TREE_SITTER.FR-2, SC-2.1: "outline_language(ReScript) → grammar loads + parser init"
+    #[test]
+    fn test_rescript_grammar_loads() {
+        let lang = outline_language(Lang::ReScript);
+        assert!(lang.is_some(), "ReScript grammar should be available");
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(&lang.unwrap())
+            .expect("ReScript grammar should initialize parser");
+    }
 }

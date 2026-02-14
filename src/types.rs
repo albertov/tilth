@@ -30,6 +30,8 @@ pub enum Lang {
     Swift,
     Kotlin,
     CSharp,
+    Haskell,
+    ReScript,
     Dockerfile,
     Make,
 }
