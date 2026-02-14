@@ -4,10 +4,7 @@ expression: "search_fixture_in_scope(\"make\", single_file_scope)"
 ---
 # Search: "make" in tests/fixtures/polyglot-project/src/Button.res — 1 matches (1 definitions, 0 usages)
 
-## tests/fixtures/polyglot-project/src/Button.res:11 [definition]
+## tests/fixtures/polyglot-project/src/Button.res:11-13 [definition]
 → [1-13]       mod Button
     [1]          type color
     [3]          let defaultColor
-    [5-8]        mod Theme
-→   [11-13]      fn make
-               let make = (~label: string, ~onClick: unit => unit) =>

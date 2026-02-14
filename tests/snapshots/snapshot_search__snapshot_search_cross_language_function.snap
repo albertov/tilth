@@ -4,10 +4,10 @@ expression: "search_fixture(\"debounce\")"
 ---
 # Search: "debounce" in tests/fixtures/polyglot-project — 2 matches (2 definitions, 0 usages)
 
-## tests/fixtures/polyglot-project/src/utils.js:1 [definition]
+## tests/fixtures/polyglot-project/src/utils.js:1-7 [definition]
 → [1-7]        export export function debounce(fn, delay) {
   [9-16]       export export class EventBus {
 
-## tests/fixtures/polyglot-project/src/utils.js:1 [definition]
+## tests/fixtures/polyglot-project/src/utils.js:1-7 [definition]
 → [1-7]        export export function debounce(fn, delay) {
   [9-16]       export export class EventBus {
