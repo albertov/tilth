@@ -1,6 +1,6 @@
 # tilth
 
-**Smart code reading for humans and AI agents.** Reduces cost per correct answer by **29%** on Sonnet and **22%** on Opus across 114 benchmark runs. ([benchmarks](#benchmarks))
+**Smart code reading for humans and AI agents.** Reduces cost per correct answer by **34%** on Sonnet, **19%** on Opus, and **38%** on Haiku across 195 benchmark runs. ([benchmarks](#benchmarks))
 
 tilth is what happens when you give `ripgrep`, `tree-sitter`, and `cat` a shared brain.
 
@@ -85,12 +85,14 @@ Code navigation tasks across 4 real-world repos (Express, FastAPI, Gin, ripgrep)
 
 | Model | Tasks | Baseline $/correct | tilth $/correct | Change | Baseline acc | tilth acc |
 |---|---|---|---|---|---|---|
-| Sonnet 4.5 | 26 (52 runs) | $0.26 | $0.19 | **-29%** | 96% | 92% |
-| Opus 4.6 | 5 hard (10 runs) | $0.29 | $0.23 | **-22%** | 100% | 100% |
-| Haiku 4.5 | 26 (52 runs) | $0.17 | $0.19 | +12% | 58% | 69% |
-| **Average** | **114 runs** | **$0.23** | **$0.19** | **-18%** | **79%** | **82%** |
+| Sonnet 4.5 | 26 (78 runs) | $0.26 | $0.17 | **-34%** | 96% | 100% |
+| Opus 4.6 | 26 (52 runs) | $0.20 | $0.16 | **-19%** | 96% | 96% |
+| Haiku 4.5 | 22 (65 runs†) | $0.17 | $0.11 | **-38%** | 58% | 87% |
+| **Average** | **195 runs** | **$0.21** | **$0.15** | **-31%** | **83%** | **95%** |
 
-Sonnet achieves 98% tilth tool adoption and wins 19 of 26 tasks on cost. Opus solves all 5 hard tasks with 100% adoption and -22% $/correct. Haiku gains +12pp accuracy with tilth (5 new tasks solved) but costs more per attempt — net +12% $/correct. Forced mode (`--disallowedTools`) is recommended for Haiku.
+† Haiku tilth runs filtered to tilth-using only (78% adoption). Use `--disallowedTools` for full adoption.
+
+Sonnet achieves 91% tilth tool adoption with 100% accuracy and wins 19 of 26 tasks on cost. Opus wins 12 of 26 tasks with 96% adoption, both modes at 96% accuracy. Haiku gains +29pp accuracy with tilth (10 new tasks solved) and -38% $/correct — a reversal from v0.4.1 where tilth cost more. Adoption improved from 42% to 78%; forced mode (`--disallowedTools`) is still recommended.
 
 See [benchmark/](benchmark/) for per-task results, by-language breakdowns, and model comparison.
 
@@ -137,7 +139,7 @@ Smaller models (e.g. Haiku) may ignore tilth tools in favor of built-in Bash/Gre
 claude --disallowedTools "Bash,Grep,Glob"
 ```
 
-Benchmarks show Haiku only adopts tilth tools 42% of the time in hybrid mode. Forced mode ensures consistent tool adoption and improves accuracy.
+Benchmarks show Haiku adopts tilth tools 78% of the time in hybrid mode (up from 42% in v0.4.1). Forced mode ensures consistent tool adoption and improves accuracy.
 
 ## How it decides what to show
 
@@ -146,8 +148,8 @@ Benchmarks show Haiku only adopts tilth tools 42% of the time in hybrid mode. Fo
 | 0 bytes | `[empty]` |
 | Binary | `[skipped]` with mime type |
 | Generated (lockfiles, .min.js) | `[generated]` |
-| < ~3500 tokens | Full content with line numbers |
-| > ~3500 tokens | Structural outline with line ranges |
+| < ~6000 tokens | Full content with line numbers |
+| > ~6000 tokens | Structural outline with line ranges |
 
 Token-based, not line-based — a 1-line minified bundle gets outlined; a 120-line focused module prints whole.
 
