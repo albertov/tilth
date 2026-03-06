@@ -39,7 +39,8 @@ pub fn outline_language(lang: Lang) -> Option<tree_sitter::Language> {
         Lang::Ruby => tree_sitter_ruby::LANGUAGE,
         // Languages without shipped grammars — fall back
         Lang::CSharp => tree_sitter_c_sharp::LANGUAGE,
-        Lang::Swift | Lang::Kotlin | Lang::Dockerfile | Lang::Make => {
+        Lang::Swift => tree_sitter_swift::LANGUAGE,
+        Lang::Kotlin | Lang::Dockerfile | Lang::Make => {
             return None;
         }
     };
@@ -82,7 +83,9 @@ fn node_to_entry(
         | "function_item"
         | "method_definition"
         | "method_declaration"
-        | "constructor_declaration" => {
+        | "constructor_declaration"
+        | "init_declaration"
+        | "deinit_declaration" => {
             let name = find_child_text(node, "name", lines)
                 .or_else(|| find_child_text(node, "identifier", lines))
                 .unwrap_or_else(|| "<anonymous>".into());
@@ -103,11 +106,15 @@ fn node_to_entry(
         }
 
         // Interfaces & traits
-        "interface_declaration" | "type_alias_declaration" | "trait_item" | "trait_definition" => {
+        "interface_declaration"
+        | "type_alias_declaration"
+        | "trait_item"
+        | "trait_definition"
+        | "protocol_declaration" => {
             let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
             (OutlineKind::Interface, name, None)
         }
-        "type_item" | "type_definition" => {
+        "type_item" | "type_definition" | "typealias_declaration" => {
             let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
             (OutlineKind::TypeAlias, name, None)
         }
