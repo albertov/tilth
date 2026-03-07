@@ -221,7 +221,7 @@ fn find_callers_treesitter(
 
 /// Find all call sites of any symbol in `targets` across the codebase using a single walk.
 /// Returns tuples of (`target_name`, match) so callers know which symbol was matched.
-fn find_callers_batch(
+pub(crate) fn find_callers_batch(
     targets: &HashSet<String>,
     scope: &Path,
     bloom: &crate::index::bloom::BloomFilterCache,
@@ -413,6 +413,21 @@ fn find_callers_treesitter_batch(
 
 /// Walk up the AST from a node to find the enclosing function definition.
 /// Returns (`function_name`, `line_range`).
+/// Type-like node kinds that can enclose a function definition.
+const TYPE_KINDS: &[&str] = &[
+    "class_declaration",
+    "class_definition",
+    "struct_item",
+    "impl_item",
+    "interface_declaration",
+    "trait_item",
+    "type_declaration",
+    "enum_item",
+    "enum_declaration",
+    "module",
+    "mod_item",
+];
+
 fn find_enclosing_function(
     node: tree_sitter::Node,
     lines: &[&str],
@@ -424,13 +439,24 @@ fn find_enclosing_function(
         let kind = n.kind();
 
         if DEFINITION_KINDS.contains(&kind) {
-            // Extract the function name
             let name =
                 extract_definition_name(n, lines).unwrap_or_else(|| "<anonymous>".to_string());
             let range = Some((
                 n.start_position().row as u32 + 1,
                 n.end_position().row as u32 + 1,
             ));
+
+            // Walk further up to find an enclosing type and qualify the name
+            let mut parent = n.parent();
+            while let Some(p) = parent {
+                if TYPE_KINDS.contains(&p.kind()) {
+                    if let Some(type_name) = extract_definition_name(p, lines) {
+                        return (format!("{type_name}.{name}"), range);
+                    }
+                }
+                parent = p.parent();
+            }
+
             return (name, range);
         }
 
