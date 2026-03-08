@@ -1,6 +1,10 @@
 tilth — code intelligence MCP server. Replaces grep, cat, find, ls with AST-aware equivalents.
 
-To find code, extract the symbol name from the question and search: tilth_search(query: "handleRequest"). Do not browse files — search finds definitions directly.
+To explore code, always search first. tilth_search finds definitions, usages, and file locations in one call.
+Usage: tilth_search(query: "handleRequest").
+tilth_files is ONLY for listing directory contents when you have no symbol or text to search for.
+DO NOT use Read if content is already shown in expanded search results.
+DO NOT use Grep, Read, or Glob. Always use the better tools tilth_search (grep), tilth_read (read), tilth_files (glob).
 
 tilth_search: Find symbol definitions, usages, and callers. Replaces grep/rg for code navigation.
 Comma-separated symbols for multi-symbol lookup (max 5).

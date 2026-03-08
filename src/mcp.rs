@@ -16,7 +16,11 @@ use crate::session::Session;
 const SERVER_INSTRUCTIONS: &str = "\
 tilth — code intelligence MCP server. Replaces grep, cat, find, ls with AST-aware equivalents.\n\
 \n\
-To find code, identify the symbol you need and search: tilth_search(query: \"handleRequest\"). Do not browse using tilth_files if you know the symbol name to look for.\n\
+To explore code, always search first. tilth_search finds definitions, usages, and file locations in one call.\n\
+Usage: tilth_search(query: \"handleRequest\").\n\
+tilth_files is ONLY for listing directory contents when you have no symbol or text to search for.\n\
+DO NOT use Read if content is already shown in expanded search results.\n\
+DO NOT use Grep, Read, or Glob. Always use the better tools tilth_search (grep), tilth_read (read), tilth_files (glob).\n\
 \n\
 tilth_search: Search code — finds definitions, usages, and text. Replaces grep/rg for all code search.\n\
   Comma-separated symbols for multi-symbol lookup (max 5).\n\
@@ -305,7 +309,7 @@ fn tool_search(
         .get("query")
         .and_then(|v| v.as_str())
         .ok_or("missing required parameter: query")?;
-    let scope = resolve_scope(args);
+    let (scope, scope_warning) = resolve_scope(args);
     let kind = args
         .get("kind")
         .and_then(|v| v.as_str())
@@ -376,7 +380,9 @@ fn tool_search(
     }
     .map_err(|e| e.to_string())?;
 
-    Ok(apply_budget(output, budget))
+    let mut result = scope_warning.unwrap_or_default();
+    result.push_str(&apply_budget(output, budget));
+    Ok(result)
 }
 
 fn tool_files(args: &Value, cache: &OutlineCache) -> Result<String, String> {
@@ -384,12 +390,14 @@ fn tool_files(args: &Value, cache: &OutlineCache) -> Result<String, String> {
         .get("pattern")
         .and_then(|v| v.as_str())
         .ok_or("missing required parameter: pattern")?;
-    let scope = resolve_scope(args);
+    let (scope, scope_warning) = resolve_scope(args);
     let budget = args.get("budget").and_then(serde_json::Value::as_u64);
 
     let output = crate::search::search_glob(pattern, &scope, cache).map_err(|e| e.to_string())?;
 
-    Ok(apply_budget(output, budget))
+    let mut result = scope_warning.unwrap_or_default();
+    result.push_str(&apply_budget(output, budget));
+    Ok(result)
 }
 
 fn tool_deps(
@@ -402,15 +410,21 @@ fn tool_deps(
         .and_then(|v| v.as_str())
         .ok_or("missing required parameter: path")?;
     let path = PathBuf::from(path_str);
-    let scope = resolve_scope(args);
+    let (scope, scope_warning) = resolve_scope(args);
     let budget = args
         .get("budget")
         .and_then(serde_json::Value::as_u64)
         .map(|b| b as usize);
 
-    let result = crate::search::deps::analyze_deps(&path, &scope, cache, bloom)
+    let deps_result = crate::search::deps::analyze_deps(&path, &scope, cache, bloom)
         .map_err(|e| e.to_string())?;
-    Ok(crate::search::deps::format_deps(&result, &scope, budget))
+    let mut output = scope_warning.unwrap_or_default();
+    output.push_str(&crate::search::deps::format_deps(
+        &deps_result,
+        &scope,
+        budget,
+    ));
+    Ok(output)
 }
 
 fn tool_session(args: &Value, session: &Session) -> Result<String, String> {
@@ -479,14 +493,24 @@ fn tool_edit(args: &Value, session: &Session) -> Result<String, String> {
     }
 }
 
-/// Canonicalize scope path, falling back to the raw path if canonicalization fails.
-fn resolve_scope(args: &Value) -> PathBuf {
-    let raw: PathBuf = args
-        .get("scope")
-        .and_then(|v| v.as_str())
-        .unwrap_or(".")
-        .into();
-    raw.canonicalize().unwrap_or(raw)
+/// Falls back to cwd when scope is invalid, with a warning message.
+fn resolve_scope(args: &Value) -> (PathBuf, Option<String>) {
+    let raw_str = args.get("scope").and_then(|v| v.as_str()).unwrap_or(".");
+    let raw: PathBuf = raw_str.into();
+    let resolved = raw.canonicalize().unwrap_or_else(|_| raw.clone());
+    let cwd = std::env::current_dir().unwrap_or_else(|_| ".".into());
+    if resolved == cwd {
+        return (".".into(), None);
+    }
+    if !resolved.is_dir() {
+        return (
+            ".".into(),
+            Some(format!(
+                "scope \"{raw_str}\" is not a valid directory, searching current directory instead.\n\n"
+            )),
+        );
+    }
+    (resolved, None)
 }
 
 fn apply_budget(output: String, budget: Option<u64>) -> String {
@@ -574,7 +598,7 @@ fn tool_definitions(edit_mode: bool) -> Vec<Value> {
                     },
                     "scope": {
                         "type": "string",
-                        "description": "Directory to search within. Default: current directory."
+                        "description": "Only use scope to search a specific subdirectory. DO NOT USE scope if you want to search the current working directory (initial search)."
                     },
                     "kind": {
                         "type": "string",
@@ -642,7 +666,7 @@ fn tool_definitions(edit_mode: bool) -> Vec<Value> {
                     },
                     "scope": {
                         "type": "string",
-                        "description": "Directory to search within. Default: current directory."
+                        "description": "Only use scope to list a specific subdirectory. DO NOT USE scope if you want to list the current working directory."
                     },
                     "budget": {
                         "type": "number",
