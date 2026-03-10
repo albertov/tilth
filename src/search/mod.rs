@@ -1,3 +1,4 @@
+pub mod blast;
 pub mod callees;
 pub mod callers;
 pub mod content;

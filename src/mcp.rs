@@ -230,7 +230,7 @@ pub(crate) fn dispatch_tool(
         "tilth_deps" => tool_deps(args, cache, bloom),
         "tilth_map" => Err("tilth_map is disabled — use tilth_search instead".into()),
         "tilth_session" => tool_session(args, session),
-        "tilth_edit" if edit_mode => tool_edit(args, session),
+        "tilth_edit" if edit_mode => tool_edit(args, session, cache, bloom),
         _ => Err(format!("unknown tool: {tool}")),
     }
 }
@@ -441,7 +441,12 @@ fn tool_session(args: &Value, session: &Session) -> Result<String, String> {
     }
 }
 
-fn tool_edit(args: &Value, session: &Session) -> Result<String, String> {
+fn tool_edit(
+    args: &Value,
+    session: &Session,
+    _cache: &OutlineCache,
+    bloom: &Arc<BloomFilterCache>,
+) -> Result<String, String> {
     let path_str = args
         .get("path")
         .and_then(|v| v.as_str())
@@ -486,7 +491,19 @@ fn tool_edit(args: &Value, session: &Session) -> Result<String, String> {
     session.record_read(&path);
 
     match crate::edit::apply_edits(&path, &edits).map_err(|e| e.to_string())? {
-        crate::edit::EditResult::Applied(output) => Ok(output),
+        crate::edit::EditResult::Applied(mut output) => {
+            let abs_path = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
+            let scope = crate::search::package_root(&abs_path).map_or_else(
+                || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+                std::path::Path::to_path_buf,
+            );
+
+            if let Some(blast) = crate::search::blast::blast_radius(&path, &edits, &scope, bloom) {
+                output.push_str(&blast);
+            }
+
+            Ok(output)
+        }
         crate::edit::EditResult::HashMismatch(msg) => Err(format!(
             "hash mismatch — file changed since last read:\n\n{msg}"
         )),
