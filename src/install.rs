@@ -163,7 +163,6 @@ enum ConfigFormat {
     Toml,
 }
 
-#[derive(Debug)]
 struct HostInfo {
     path: PathBuf,
     format: ConfigFormat,
@@ -404,7 +403,9 @@ mod tests {
 
     #[test]
     fn unknown_host_error_includes_amp() {
-        let err = resolve_host("nope").unwrap_err();
+        let err = resolve_host("nope")
+            .err()
+            .expect("unknown host should return an error");
         assert!(
             err.contains("amp"),
             "error should list amp in supported hosts, got: {err}"
