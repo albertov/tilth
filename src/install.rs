@@ -17,6 +17,12 @@ use serde_json::{json, Value};
 //   amp:            ~/.config/amp/settings.json                (user scope)
 //   droid:          ~/.factory/mcp.json                        (user scope)
 //   antigravity:    ~/.gemini/antigravity/mcp_config.json      (user scope)
+//   zed:            ~/.config/zed/settings.json                (user scope)
+//   copilot-cli:    ~/.copilot/mcp-config.json                 (user scope)
+//   augment:        ~/.augment/settings.json                   (user scope)
+//   kiro:           ~/.kiro/settings/mcp.json                  (user scope)
+//   kilo-code:      <globalStorage>/kilocode.kilo-code/...     (user scope)
+//   cline:          <globalStorage>/saoudrizwan.claude-dev/... (user scope)
 const SUPPORTED_HOSTS: &[&str] = &[
     "claude-code",
     "cursor",
@@ -29,6 +35,12 @@ const SUPPORTED_HOSTS: &[&str] = &[
     "amp",
     "droid",
     "antigravity",
+    "zed",
+    "copilot-cli",
+    "augment",
+    "kiro",
+    "kilo-code",
+    "cline",
 ];
 
 /// The tilth server entry as JSON, for hosts that use JSON config.
@@ -279,6 +291,66 @@ fn resolve_host(host: &str) -> Result<HostInfo, String> {
             note: Some("User scope — available in all projects."),
         }),
 
+        // Zed user scope: ~/.config/zed/settings.json → context_servers (NOT mcpServers)
+        // Verified from official docs: https://zed.dev/docs/ai/mcp
+        "zed" => Ok(HostInfo {
+            path: home.join(".config/zed/settings.json"),
+            format: ConfigFormat::Json {
+                servers_key: "context_servers",
+            },
+            note: Some("User scope — available in all projects."),
+        }),
+
+        // GitHub Copilot CLI user scope: ~/.copilot/mcp-config.json → mcpServers
+        // Verified from official docs: https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers
+        "copilot-cli" => Ok(HostInfo {
+            path: home.join(".copilot/mcp-config.json"),
+            format: ConfigFormat::Json {
+                servers_key: "mcpServers",
+            },
+            note: Some("User scope — available in all projects."),
+        }),
+
+        // AugmentCode user scope: ~/.augment/settings.json → mcpServers
+        // Verified from official docs: https://docs.augmentcode.com/cli/integrations
+        "augment" => Ok(HostInfo {
+            path: home.join(".augment/settings.json"),
+            format: ConfigFormat::Json {
+                servers_key: "mcpServers",
+            },
+            note: Some("User scope — available in all projects."),
+        }),
+
+        // Kiro user scope: ~/.kiro/settings/mcp.json → mcpServers
+        // Verified from official docs: https://kiro.dev/docs/mcp/configuration/
+        "kiro" => Ok(HostInfo {
+            path: home.join(".kiro/settings/mcp.json"),
+            format: ConfigFormat::Json {
+                servers_key: "mcpServers",
+            },
+            note: Some("User scope — available in all projects."),
+        }),
+
+        // Kilo Code (VS Code extension): globalStorage → mcpServers
+        // Verified from official docs: https://kilo.ai/docs/automate/mcp/using-in-kilo-code
+        "kilo-code" => Ok(HostInfo {
+            path: vscode_global_storage_path("kilocode.kilo-code", "mcp_settings.json")?,
+            format: ConfigFormat::Json {
+                servers_key: "mcpServers",
+            },
+            note: None,
+        }),
+
+        // Cline (VS Code extension): globalStorage → mcpServers
+        // Verified from official docs: https://docs.cline.bot/mcp-servers/configuring-mcp-servers
+        "cline" => Ok(HostInfo {
+            path: vscode_global_storage_path("saoudrizwan.claude-dev", "cline_mcp_settings.json")?,
+            format: ConfigFormat::Json {
+                servers_key: "mcpServers",
+            },
+            note: None,
+        }),
+
         _ => Err(format!(
             "unknown host: {host}. Supported: {}",
             SUPPORTED_HOSTS.join(", ")
@@ -314,6 +386,37 @@ fn upsert_json_server(config: &mut Value, servers_key: &str, entry: Value) -> Re
         .ok_or_else(|| format!("{servers_key} is not a JSON object"))?
         .insert("tilth".into(), entry);
     Ok(())
+}
+
+/// Returns the VS Code globalStorage path for a given extension and settings filename.
+fn vscode_global_storage_path(extension_id: &str, filename: &str) -> Result<PathBuf, String> {
+    let base = vscode_global_storage_base()?;
+    Ok(base.join(extension_id).join("settings").join(filename))
+}
+
+fn vscode_global_storage_base() -> Result<PathBuf, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let home = home_dir()?;
+        Ok(home.join("Library/Application Support/Code/User/globalStorage"))
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let appdata = std::env::var("APPDATA").map_err(|_| "APPDATA not set")?;
+        Ok(PathBuf::from(appdata).join("Code/User/globalStorage"))
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let home = home_dir()?;
+        Ok(home.join(".config/Code/User/globalStorage"))
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    {
+        Err("VS Code globalStorage path unknown on this OS".into())
+    }
 }
 
 fn claude_desktop_path() -> Result<PathBuf, String> {
@@ -495,6 +598,117 @@ mod tests {
             err.contains("antigravity"),
             "error should list antigravity in supported hosts, got: {err}"
         );
+    }
+
+    #[test]
+    fn zed_resolve_host() {
+        let info = resolve_host("zed").expect("zed should resolve");
+        assert!(
+            info.path.ends_with(".config/zed/settings.json"),
+            "path should end with .config/zed/settings.json, got: {}",
+            info.path.display()
+        );
+        match info.format {
+            ConfigFormat::Json { servers_key } => {
+                assert_eq!(servers_key, "context_servers");
+            }
+            ConfigFormat::Toml => panic!("zed should use JSON format, not TOML"),
+        }
+    }
+
+    #[test]
+    fn zed_uses_context_servers_not_mcp_servers() {
+        let mut config = json!({});
+        let entry = json!({"command": "tilth", "args": ["--mcp"]});
+        upsert_json_server(&mut config, "context_servers", entry).unwrap();
+
+        assert!(config.get("context_servers").is_some());
+        assert!(config.get("mcpServers").is_none());
+        assert_eq!(
+            config["context_servers"]["tilth"]["command"],
+            json!("tilth")
+        );
+    }
+
+    #[test]
+    fn copilot_cli_resolve_host() {
+        let info = resolve_host("copilot-cli").expect("copilot-cli should resolve");
+        assert!(
+            info.path.ends_with(".copilot/mcp-config.json"),
+            "path should end with .copilot/mcp-config.json, got: {}",
+            info.path.display()
+        );
+        match info.format {
+            ConfigFormat::Json { servers_key } => {
+                assert_eq!(servers_key, "mcpServers");
+            }
+            ConfigFormat::Toml => panic!("copilot-cli should use JSON format, not TOML"),
+        }
+    }
+
+    #[test]
+    fn augment_resolve_host() {
+        let info = resolve_host("augment").expect("augment should resolve");
+        assert!(
+            info.path.ends_with(".augment/settings.json"),
+            "path should end with .augment/settings.json, got: {}",
+            info.path.display()
+        );
+        match info.format {
+            ConfigFormat::Json { servers_key } => {
+                assert_eq!(servers_key, "mcpServers");
+            }
+            ConfigFormat::Toml => panic!("augment should use JSON format, not TOML"),
+        }
+    }
+
+    #[test]
+    fn kiro_resolve_host() {
+        let info = resolve_host("kiro").expect("kiro should resolve");
+        assert!(
+            info.path.ends_with(".kiro/settings/mcp.json"),
+            "path should end with .kiro/settings/mcp.json, got: {}",
+            info.path.display()
+        );
+        match info.format {
+            ConfigFormat::Json { servers_key } => {
+                assert_eq!(servers_key, "mcpServers");
+            }
+            ConfigFormat::Toml => panic!("kiro should use JSON format, not TOML"),
+        }
+    }
+
+    #[test]
+    fn kilo_code_resolve_host() {
+        let info = resolve_host("kilo-code").expect("kilo-code should resolve");
+        let path_str = info.path.to_string_lossy();
+        assert!(
+            path_str.contains("kilocode.kilo-code") && path_str.contains("mcp_settings.json"),
+            "path should contain kilocode.kilo-code and mcp_settings.json, got: {path_str}",
+        );
+        match info.format {
+            ConfigFormat::Json { servers_key } => {
+                assert_eq!(servers_key, "mcpServers");
+            }
+            ConfigFormat::Toml => panic!("kilo-code should use JSON format, not TOML"),
+        }
+    }
+
+    #[test]
+    fn cline_resolve_host() {
+        let info = resolve_host("cline").expect("cline should resolve");
+        let path_str = info.path.to_string_lossy();
+        assert!(
+            path_str.contains("saoudrizwan.claude-dev")
+                && path_str.contains("cline_mcp_settings.json"),
+            "path should contain saoudrizwan.claude-dev and cline_mcp_settings.json, got: {path_str}",
+        );
+        match info.format {
+            ConfigFormat::Json { servers_key } => {
+                assert_eq!(servers_key, "mcpServers");
+            }
+            ConfigFormat::Toml => panic!("cline should use JSON format, not TOML"),
+        }
     }
 
     #[test]
