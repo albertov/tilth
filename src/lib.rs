@@ -35,6 +35,15 @@ use classify::classify;
 use error::TilthError;
 use types::QueryType;
 
+/// Holds expanded search dependencies, allocated once.
+/// Avoids scattered `Option<T>` + `unwrap()` throughout dispatch.
+struct ExpandedCtx {
+    session: session::Session,
+    sym_index: index::SymbolIndex,
+    bloom: index::bloom::BloomFilterCache,
+    expand: usize,
+}
+
 /// The single public API. Everything flows through here:
 /// classify → match on query type → return formatted string.
 pub fn run(
@@ -154,24 +163,10 @@ fn run_inner(
         }
     }
 
-    // Allocate expanded search deps only when needed (single-shot CLI, no reuse)
-    let session;
-    let sym_index;
-    let bloom;
-    if use_expanded {
-        session = Some(session::Session::new());
-        sym_index = Some(index::SymbolIndex::new());
-        bloom = Some(index::bloom::BloomFilterCache::new());
-    } else {
-        session = None;
-        sym_index = None;
-        bloom = None;
-    }
-
+    // FilePath and Glob are read operations, not search — handle before expanded dispatch
     let output = match query_type {
         QueryType::FilePath(path) => {
             let mut out = read::read_file(&path, section, full, cache, false)?;
-            // Append related file hints on large files (outline mode only, not full reads)
             if section.is_none() && !full && read::would_outline(&path) {
                 let related = read::imports::resolve_related_files(&path);
                 if !related.is_empty() {
@@ -186,114 +181,98 @@ fn run_inner(
             }
             out
         }
-
         QueryType::Glob(pattern) => search::search_glob(&pattern, scope, cache)?,
-
-        QueryType::Symbol(name) => {
-            if use_expanded {
-                search::search_symbol_expanded(
-                    &name,
-                    scope,
-                    cache,
-                    session.as_ref().unwrap(),
-                    sym_index.as_ref().unwrap(),
-                    bloom.as_ref().unwrap(),
-                    expand,
-                    None,
-                )?
-            } else {
-                search::search_symbol(&name, scope, cache)?
-            }
+        _ if use_expanded => {
+            let ctx = ExpandedCtx {
+                session: session::Session::new(),
+                sym_index: index::SymbolIndex::new(),
+                bloom: index::bloom::BloomFilterCache::new(),
+                expand,
+            };
+            run_query_expanded(&query_type, scope, cache, &ctx)?
         }
-
-        QueryType::Concept(text) => {
-            let is_multi_word = text.contains(' ');
-
-            if is_multi_word && use_expanded {
-                search::search_content_expanded(
-                    &text,
-                    scope,
-                    cache,
-                    session.as_ref().unwrap(),
-                    expand,
-                    None,
-                )?
-            } else if is_multi_word {
-                multi_word_concept_search(&text, scope, cache)?
-            } else if use_expanded {
-                // --expand: go straight to expanded symbol search, intentionally
-                // bypassing the definitions>0 / content fallback cascade in
-                // single_query_search. The expanded variant already provides
-                // richer results with inline source, making the cascade redundant.
-                search::search_symbol_expanded(
-                    &text,
-                    scope,
-                    cache,
-                    session.as_ref().unwrap(),
-                    sym_index.as_ref().unwrap(),
-                    bloom.as_ref().unwrap(),
-                    expand,
-                    None,
-                )?
-            } else {
-                // Single-word concept: prefer definitions, then content, then any match.
-                // Differs from Fallthrough which accepts any match immediately.
-                single_query_search(&text, scope, cache, true)?
-            }
-        }
-
-        QueryType::Content(text) => {
-            if use_expanded {
-                search::search_content_expanded(
-                    &text,
-                    scope,
-                    cache,
-                    session.as_ref().unwrap(),
-                    expand,
-                    None,
-                )?
-            } else {
-                search::search_content(&text, scope, cache)?
-            }
-        }
-
-        QueryType::Regex(pattern) => {
-            if use_expanded {
-                search::search_regex_expanded(
-                    &pattern,
-                    scope,
-                    cache,
-                    session.as_ref().unwrap(),
-                    expand,
-                    None,
-                )?
-            } else {
-                search::search_regex(&pattern, scope, cache)?
-            }
-        }
-
-        QueryType::Fallthrough(text) => {
-            if use_expanded {
-                // --expand: skip single_query_search cascade (same rationale as Concept above)
-                search::search_symbol_expanded(
-                    &text,
-                    scope,
-                    cache,
-                    session.as_ref().unwrap(),
-                    sym_index.as_ref().unwrap(),
-                    bloom.as_ref().unwrap(),
-                    expand,
-                    None,
-                )?
-            } else {
-                single_query_search(&text, scope, cache, false)?
-            }
-        }
+        _ => run_query_basic(&query_type, scope, cache)?,
     };
 
     match budget_tokens {
         Some(b) => Ok(budget::apply(&output, b)),
         None => Ok(output),
+    }
+}
+
+/// Dispatch search queries in expanded mode (inline source for top N matches).
+/// Only called for search query types — FilePath/Glob are handled before this.
+fn run_query_expanded(
+    query_type: &QueryType,
+    scope: &Path,
+    cache: &OutlineCache,
+    ctx: &ExpandedCtx,
+) -> Result<String, TilthError> {
+    match query_type {
+        QueryType::Symbol(name) => search::search_symbol_expanded(
+            name,
+            scope,
+            cache,
+            &ctx.session,
+            &ctx.sym_index,
+            &ctx.bloom,
+            ctx.expand,
+            None,
+        ),
+        QueryType::Concept(text) if text.contains(' ') => {
+            search::search_content_expanded(text, scope, cache, &ctx.session, ctx.expand, None)
+        }
+        QueryType::Concept(text) | QueryType::Fallthrough(text) => {
+            // --expand: go straight to expanded symbol search, intentionally
+            // bypassing the definitions>0 / content fallback cascade in
+            // single_query_search. The expanded variant already provides
+            // richer results with inline source, making the cascade redundant.
+            search::search_symbol_expanded(
+                text,
+                scope,
+                cache,
+                &ctx.session,
+                &ctx.sym_index,
+                &ctx.bloom,
+                ctx.expand,
+                None,
+            )
+        }
+        QueryType::Content(text) => {
+            search::search_content_expanded(text, scope, cache, &ctx.session, ctx.expand, None)
+        }
+        QueryType::Regex(pattern) => {
+            search::search_regex_expanded(pattern, scope, cache, &ctx.session, ctx.expand, None)
+        }
+        // FilePath/Glob never reach here (gated by should_use_expanded)
+        _ => unreachable!("non-search query type in expanded path"),
+    }
+}
+
+/// Dispatch search queries in basic mode (no expansion).
+/// Only called for search query types — FilePath/Glob are handled before this.
+fn run_query_basic(
+    query_type: &QueryType,
+    scope: &Path,
+    cache: &OutlineCache,
+) -> Result<String, TilthError> {
+    match query_type {
+        QueryType::Symbol(name) => search::search_symbol(name, scope, cache),
+        QueryType::Concept(text) if text.contains(' ') => {
+            multi_word_concept_search(text, scope, cache)
+        }
+        QueryType::Concept(text) => {
+            // Single-word concept: prefer definitions, then content, then any match.
+            single_query_search(text, scope, cache, true)
+        }
+        QueryType::Content(text) => search::search_content(text, scope, cache),
+        QueryType::Regex(pattern) => search::search_regex(pattern, scope, cache),
+        QueryType::Fallthrough(text) => {
+            // Accept any symbol match immediately (no definitions preference).
+            single_query_search(text, scope, cache, false)
+        }
+        // FilePath/Glob never reach here
+        _ => unreachable!("non-search query type in basic path"),
     }
 }
 
