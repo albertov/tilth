@@ -1371,7 +1371,9 @@ mod tests {
 
     #[test]
     fn walker_whitelist_fewer_than_unfiltered() {
-        let scope = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        // Use project root (not src/) — project root has .toml, .md, .lock etc.
+        // alongside .rs files, so *.rs is guaranteed to be a strict subset.
+        let scope = Path::new(env!("CARGO_MANIFEST_DIR"));
         let all = walk_paths(&scope, None);
         let rs_only = walk_paths(&scope, Some("*.rs"));
         assert!(
