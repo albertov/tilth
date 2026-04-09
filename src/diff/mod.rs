@@ -495,6 +495,7 @@ fn diff_log(range: &str, scope: Option<&str>, budget: Option<u64>) -> Result<Str
 }
 
 /// Format a duration as a relative time string.
+#[allow(dead_code)]
 pub(crate) fn relative_time(secs: i64) -> String {
     let secs = secs.max(0) as u64;
     if secs < 60 {
