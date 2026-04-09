@@ -15,6 +15,8 @@
 
 pub(crate) mod budget;
 pub mod cache;
+#[allow(dead_code)]
+pub(crate) mod diff;
 pub(crate) mod classify;
 pub(crate) mod edit;
 pub mod error;

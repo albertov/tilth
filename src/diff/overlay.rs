@@ -1,0 +1,1 @@
+// Structural overlay — implementation pending.
