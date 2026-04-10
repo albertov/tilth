@@ -132,7 +132,7 @@ def run_single(
             "--no-session-persistence",
             "--dangerously-skip-permissions",
             "--strict-mcp-config",
-            "--system-prompt", SYSTEM_PROMPT,
+            "--system-prompt", SYSTEM_PROMPT + f"\nYour current working directory is: {repo_path}",
         ]
 
         if mode.tools:
@@ -369,8 +369,8 @@ Examples:
                         current_run += 1
                         run_id = f"{task_name}/{mode_name}/{model_name}/rep{rep}"
 
-                        # Reset repo and apply mutations for edit tasks
-                        if task.task_type == "edit":
+                        # Reset repo and apply mutations for tasks that have them
+                        if task.mutations:
                             repo_path = get_repo_path(task.repo)
                             if task.repo == "synthetic":
                                 if rep > 0 or mode_name != prev_mode or task_name != prev_task:
