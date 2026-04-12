@@ -6,7 +6,7 @@ use std::fmt::Write;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::lang::detect_file_type;
 use crate::read::imports::is_import_line;
@@ -665,54 +665,50 @@ fn extract_toml_string_value(line: &str, key: &str) -> Option<String> {
 // Git context
 // ---------------------------------------------------------------------------
 
-fn git_context(root: &Path) -> Option<String> {
-    // Branch name
-    let branch = Command::new("git")
-        .args(["branch", "--show-current"])
+/// Run a git command with a 200ms timeout. Returns None if it fails or times out.
+fn git_output(root: &Path, args: &[&str]) -> Option<String> {
+    let mut child = Command::new("git")
+        .args(args)
         .current_dir(root)
-        .output()
-        .ok()
-        .and_then(|o| {
-            if o.status.success() {
-                let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
-                if s.is_empty() {
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .ok()?;
+
+    let deadline = Instant::now() + Duration::from_millis(200);
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                if !status.success() {
+                    return None;
+                }
+                let out = child.stdout.take()?;
+                let s = std::io::read_to_string(out).ok()?;
+                let trimmed = s.trim().to_string();
+                return if trimmed.is_empty() {
                     None
                 } else {
-                    Some(s)
-                }
-            } else {
-                None
+                    Some(trimmed)
+                };
             }
-        });
-
-    // Detached HEAD fallback
-    let branch = branch.or_else(|| {
-        Command::new("git")
-            .args(["rev-parse", "--short", "HEAD"])
-            .current_dir(root)
-            .output()
-            .ok()
-            .and_then(|o| {
-                if o.status.success() {
-                    Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
-                } else {
-                    None
+            Ok(None) => {
+                if Instant::now() >= deadline {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return None;
                 }
-            })
-    })?;
+                std::thread::sleep(Duration::from_millis(5));
+            }
+            Err(_) => return None,
+        }
+    }
+}
 
-    // Dirty file count
-    let dirty_count = Command::new("git")
-        .args(["status", "--porcelain"])
-        .current_dir(root)
-        .output()
-        .ok()
-        .map_or(0, |o| {
-            String::from_utf8_lossy(&o.stdout)
-                .lines()
-                .filter(|l| !l.is_empty())
-                .count()
-        });
+fn git_context(root: &Path) -> Option<String> {
+    let branch = git_output(root, &["branch", "--show-current"])
+        .or_else(|| git_output(root, &["rev-parse", "--short", "HEAD"]))?;
+
+    let dirty_count = git_output(root, &["status", "--porcelain"]).map_or(0, |s| s.lines().count());
 
     let dirty_str = if dirty_count == 0 {
         "clean".to_string()

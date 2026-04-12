@@ -148,9 +148,9 @@ pub fn run(edit_mode: bool, scope: Option<&Path>) -> io::Result<()> {
 
         // Check if this is a response to our roots/list request
         if let Some(ref roots_id) = pending_roots_id {
-            if msg.get("id") == Some(roots_id) && msg.get("result").is_some() {
+            if msg.get("id") == Some(roots_id) {
                 pending_roots_id = None;
-                // Only apply roots if --scope was NOT explicitly provided
+                // Only apply roots on success and if --scope was NOT explicitly provided
                 if !scope_is_explicit {
                     if let Some(root_path) = extract_root_from_response(&msg) {
                         let _ = std::env::set_current_dir(&root_path);
@@ -222,17 +222,41 @@ fn extract_root_from_response(msg: &Value) -> Option<PathBuf> {
     let roots = msg.get("result")?.get("roots")?.as_array()?;
     for root in roots {
         let uri = root.get("uri")?.as_str()?;
-        // Parse file:// URI to path
-        let path = if let Some(p) = uri.strip_prefix("file://") {
-            PathBuf::from(p)
-        } else {
-            PathBuf::from(uri)
-        };
+        let raw_path = uri.strip_prefix("file://").unwrap_or(uri);
+        let path = PathBuf::from(percent_decode(raw_path));
         if path.is_dir() {
             return Some(path);
         }
     }
     None
+}
+
+/// Decode percent-encoded URI path components (e.g. `%20` → space).
+fn percent_decode(input: &str) -> String {
+    let mut out = Vec::with_capacity(input.len());
+    let bytes = input.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let (Some(hi), Some(lo)) = (hex_val(bytes[i + 1]), hex_val(bytes[i + 2])) {
+                out.push(hi << 4 | lo);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8(out).unwrap_or_else(|_| input.to_string())
+}
+
+fn hex_val(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
+    }
 }
 
 #[derive(Deserialize)]
@@ -1101,6 +1125,31 @@ mod tests {
         });
         let path = extract_root_from_response(&msg);
         assert_eq!(path, Some(tmp.path().to_path_buf()));
+    }
+
+    #[test]
+    fn extract_root_percent_encoded_uri() {
+        let tmp = tempfile::tempdir().unwrap();
+        let space_dir = tmp.path().join("my project");
+        std::fs::create_dir(&space_dir).unwrap();
+        let encoded =
+            format!("file://{}", tmp.path().display()).replace(' ', "%20") + "/my%20project";
+        let msg = serde_json::json!({
+            "result": { "roots": [{ "uri": encoded }] }
+        });
+        let path = extract_root_from_response(&msg);
+        assert_eq!(path, Some(space_dir));
+    }
+
+    #[test]
+    fn percent_decode_basic() {
+        assert_eq!(
+            percent_decode("/Users/Jan%20Hallvard/project"),
+            "/Users/Jan Hallvard/project"
+        );
+        assert_eq!(percent_decode("/normal/path"), "/normal/path");
+        assert_eq!(percent_decode("%2F%2Fweird"), "//weird");
+        assert_eq!(percent_decode("no%percent"), "no%percent"); // incomplete sequence preserved
     }
 
     #[test]
