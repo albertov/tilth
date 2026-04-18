@@ -11,6 +11,28 @@ fn search_fixture(symbol: &str) -> String {
     search_fixture_in_scope(symbol, Path::new("tests/fixtures/polyglot-project"))
 }
 
+fn header_match_count(result: &str) -> usize {
+    let header = result
+        .lines()
+        .find(|line| line.starts_with("# Search:"))
+        .expect("search output should include a header line");
+
+    let (_, after_dash) = header
+        .rsplit_once(" — ")
+        .expect("header should include an em-dash separator");
+    let (count_str, _) = after_dash
+        .split_once(" matches")
+        .expect("header should include a match count");
+
+    count_str
+        .parse::<usize>()
+        .expect("match count in header should be numeric")
+}
+
+fn rendered_match_count(result: &str) -> usize {
+    result.lines().filter(|line| line.starts_with("## ")).count()
+}
+
 #[test]
 fn snapshot_search_haskell_function() {
     insta::assert_snapshot!(search_fixture("tokenize"));
@@ -76,6 +98,17 @@ fn snapshot_search_python_class() {
 fn snapshot_search_cross_language_function() {
     // "debounce" only exists in utils.js
     insta::assert_snapshot!(search_fixture("debounce"));
+}
+
+#[test]
+fn search_header_count_matches_rendered_entries_after_dedup() {
+    let result = search_fixture("debounce");
+    assert_eq!(
+        header_match_count(&result),
+        rendered_match_count(&result),
+        "Header match count should align with rendered match entries.\nActual result:\n{}",
+        result
+    );
 }
 
 #[test]
