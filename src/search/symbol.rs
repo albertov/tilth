@@ -7,8 +7,9 @@ use std::time::SystemTime;
 use super::file_metadata;
 use crate::lang::treesitter::{
     definition_weight, extract_definition_name, extract_impl_trait, extract_impl_type,
-    extract_implemented_interfaces, DEFINITION_KINDS,
+    extract_implemented_interfaces,
 };
+pub(crate) use crate::lang::treesitter::DEFINITION_KINDS;
 
 use crate::error::TilthError;
 use crate::lang::detect_file_type;
