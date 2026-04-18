@@ -28,6 +28,68 @@ pub fn outline_language(lang: Lang) -> Option<tree_sitter::Language> {
     Some(lang.into())
 }
 
+/// Find the first child with a specific node kind and return its text.
+fn first_child_by_kind(node: tree_sitter::Node, kind: &str, lines: &[&str]) -> Option<String> {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == kind {
+            return Some(node_text(child, lines));
+        }
+    }
+    None
+}
+
+/// Extract declaration names from ReScript nodes.
+fn rescript_binding_name(node: tree_sitter::Node, lines: &[&str]) -> Option<String> {
+    match node.kind() {
+        "let_declaration" => {
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                if child.kind() == "let_binding" {
+                    return find_child_text(child, "pattern", lines)
+                        .or_else(|| find_child_text(child, "name", lines));
+                }
+            }
+            None
+        }
+        "type_declaration" => {
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                if child.kind() == "type_binding" {
+                    return find_child_text(child, "name", lines);
+                }
+            }
+            None
+        }
+        "module_declaration" => {
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                if child.kind() == "module_binding" {
+                    return find_child_text(child, "name", lines);
+                }
+            }
+            None
+        }
+        "external_declaration" => first_child_by_kind(node, "value_identifier", lines),
+        "exception_declaration" => first_child_by_kind(node, "variant_identifier", lines),
+        "open_statement" => first_child_by_kind(node, "module_identifier", lines),
+        _ => None,
+    }
+}
+
+/// Check whether a ReScript let declaration's body is a function.
+fn rescript_let_is_function(node: tree_sitter::Node) -> bool {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "let_binding" {
+            if let Some(body) = child.child_by_field_name("body") {
+                return matches!(body.kind(), "function" | "arrow_function");
+            }
+        }
+    }
+    false
+}
+
 /// Walk top-level children of the root node, extracting outline entries.
 pub(crate) fn walk_top_level(
     root: tree_sitter::Node,
@@ -151,6 +213,47 @@ fn node_to_entry(
         "lexical_declaration" | "variable_declaration" | "var_definition" => {
             let name = first_identifier_text(node, lines).unwrap_or_else(|| "<var>".into());
             (OutlineKind::Variable, name, None)
+        }
+
+        // ReScript: let declarations (functions vs values)
+        "let_declaration" => {
+            let name = rescript_binding_name(node, lines).unwrap_or_else(|| "<anonymous>".into());
+            if rescript_let_is_function(node) {
+                let sig = extract_signature(node, lines);
+                (OutlineKind::Function, name, Some(sig))
+            } else {
+                (OutlineKind::Variable, name, None)
+            }
+        }
+
+        // ReScript: type declarations (guarded to avoid Go's type_declaration)
+        "type_declaration" if matches!(lang, Lang::ReScript) => {
+            let name = rescript_binding_name(node, lines).unwrap_or_else(|| "<anonymous>".into());
+            (OutlineKind::TypeAlias, name, None)
+        }
+
+        // ReScript: module declarations
+        "module_declaration" => {
+            let name = rescript_binding_name(node, lines).unwrap_or_else(|| "<module>".into());
+            (OutlineKind::Module, name, None)
+        }
+
+        // ReScript: external declarations
+        "external_declaration" => {
+            let name = rescript_binding_name(node, lines).unwrap_or_else(|| "<external>".into());
+            (OutlineKind::Function, name, None)
+        }
+
+        // ReScript: open statements map to imports
+        "open_statement" => {
+            let name = rescript_binding_name(node, lines).unwrap_or_else(|| node_text(node, lines));
+            (OutlineKind::Import, name, None)
+        }
+
+        // ReScript: exception declarations
+        "exception_declaration" => {
+            let name = rescript_binding_name(node, lines).unwrap_or_else(|| "<exception>".into());
+            (OutlineKind::Enum, name, None)
         }
 
         // Properties (C#, Swift, Kotlin)
@@ -428,6 +531,11 @@ pub(crate) fn extract_import_source(text: &str) -> String {
             .trim()
             .trim_end_matches("::")
             .to_string();
+    }
+
+    // ReScript: `open Module` → `Module`
+    if let Some(rest) = trimmed.strip_prefix("open ") {
+        return rest.split_whitespace().next().unwrap_or("").to_string();
     }
 
     // Python: `from module import ...`

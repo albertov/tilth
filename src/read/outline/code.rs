@@ -461,4 +461,119 @@ add x y = x + y
             "react"
         );
     }
+
+    #[test]
+    fn test_rescript_outline_declarations() {
+        let source = r#"let name = \"hello\"
+
+let add = (x, y) => x + y
+
+type color = Red | Green | Blue
+
+module Utils = {
+  let helper = () => \"help\"
+}
+
+external alert: string => unit = \"alert\"
+
+open Belt
+
+exception NotFound(string)
+"#;
+
+        let entries = {
+            let lang_ts = outline_language(Lang::ReScript).unwrap();
+            let mut parser = tree_sitter::Parser::new();
+            parser.set_language(&lang_ts).unwrap();
+            let tree = parser.parse(source, None).unwrap();
+            let root = tree.root_node();
+            let lines: Vec<&str> = source.lines().collect();
+            walk_top_level(root, &lines, Lang::ReScript)
+        };
+
+        let items: Vec<(OutlineKind, &str)> = entries
+            .iter()
+            .map(|e| (e.kind, e.name.as_str()))
+            .collect();
+
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Variable && *n == "name"),
+            "let value should map to Variable"
+        );
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Function && *n == "add"),
+            "let function should map to Function"
+        );
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::TypeAlias && *n == "color"),
+            "type should map to TypeAlias"
+        );
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Module && *n == "Utils"),
+            "module should map to Module"
+        );
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Function && *n == "alert"),
+            "external should map to Function"
+        );
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Import && *n == "Belt"),
+            "open should map to Import"
+        );
+        assert!(
+            items
+                .iter()
+                .any(|(k, n)| *k == OutlineKind::Enum && *n == "NotFound"),
+            "exception should map to Enum"
+        );
+    }
+
+    #[test]
+    fn test_rescript_empty_file() {
+        let result = outline("", Lang::ReScript, 100);
+        assert!(result.is_empty(), "empty ReScript file should produce empty outline");
+    }
+
+    #[test]
+    fn test_rescript_open_import_source() {
+        assert_eq!(extract_import_source("open Belt"), "Belt");
+        assert_eq!(extract_import_source("open RescriptCore"), "RescriptCore");
+    }
+
+    #[test]
+    fn test_rescript_interface_file() {
+        let source = r#"type color = Red | Green | Blue
+let add: (int, int) => int
+external alert: string => unit = \"alert\"
+"#;
+
+        let entries = {
+            let lang_ts = outline_language(Lang::ReScript).unwrap();
+            let mut parser = tree_sitter::Parser::new();
+            parser.set_language(&lang_ts).unwrap();
+            let tree = parser.parse(source, None).unwrap();
+            let root = tree.root_node();
+            let lines: Vec<&str> = source.lines().collect();
+            walk_top_level(root, &lines, Lang::ReScript)
+        };
+
+        assert!(
+            entries
+                .iter()
+                .any(|e| e.kind == OutlineKind::TypeAlias && e.name == "color"),
+            "should find type declaration in interface source"
+        );
+    }
 }
