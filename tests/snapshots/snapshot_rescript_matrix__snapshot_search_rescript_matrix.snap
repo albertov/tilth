@@ -7,106 +7,85 @@ expression: aggregated_output
 
 ## tests/fixtures/rescript-matrix/01_decorator.res:2 [usage]
 → [1-5]        mod 01_decorator
-→   [2]          type decoratedType
+    [2]          type decoratedType
     [5]          fn decoratedFunction
-               let decoratedFunction = () => "ok"
 
 ## tests/fixtures/rescript-matrix/02_type_declarations.res:1 [usage]
 → [1-8]        mod 02_type_declarations
-→   [1]          type color
+    [1]          type color
     [3]          let defaultColor
-    [5-8]        mod Theme
 
 ## tests/fixtures/rescript-matrix/Types.resi:1 [usage]
 → [1-13]       mod Types
     [3]          type color  // // Interface file for type signatures
     [4]          type status
-    [6-10]       type user
-    [13]         let validate
 
 ## tests/fixtures/rescript-matrix/Types.resi:3 [usage]
 → [1-13]       mod Types
-→   [3]          type color  // // Interface file for type signatures
+    [3]          type color  // // Interface file for type signatures
     [4]          type status
-    [6-10]       type user
-    [13]         let validate
 
 ## tests/fixtures/rescript-matrix/Types.resi:4 [usage]
 → [1-13]       mod Types
     [3]          type color  // // Interface file for type signatures
-→   [4]          type status
-    [6-10]       type user
-    [13]         let validate
+    [4]          type status
 
 ## tests/fixtures/rescript-matrix/Types.resi:6 [usage]
 → [1-13]       mod Types
     [3]          type color  // // Interface file for type signatures
     [4]          type status
-→   [6-10]       type user
-    [13]         let validate
 === Search: let ===
 # Search: "let" in tests/fixtures/rescript-matrix — 10 matches
 
 ## tests/fixtures/rescript-matrix/01_decorator.res:5 [usage]
 → [1-5]        mod 01_decorator
     [2]          type decoratedType
-→   [5]          fn decoratedFunction
-               let decoratedFunction = () => "ok"
+    [5]          fn decoratedFunction
 
 ## tests/fixtures/rescript-matrix/02_type_declarations.res:3 [usage]
 → [1-8]        mod 02_type_declarations
     [1]          type color
-→   [3]          let defaultColor
-    [5-8]        mod Theme
+    [3]          let defaultColor
 
 ## tests/fixtures/rescript-matrix/02_type_declarations.res:6 [usage]
 → [1-8]        mod 02_type_declarations
     [1]          type color
     [3]          let defaultColor
-→   [5-8]        mod Theme
 
 ## tests/fixtures/rescript-matrix/02_type_declarations.res:7 [usage]
 → [1-8]        mod 02_type_declarations
     [1]          type color
     [3]          let defaultColor
-→   [5-8]        mod Theme
 
 ## tests/fixtures/rescript-matrix/03_external_declarations.res:2 [usage]
 → [1-5]        mod 03_external_declarations
-→   [2]          let mathRandom
+    [2]          let mathRandom
     [5]          fn someExternal
 
 ## tests/fixtures/rescript-matrix/04_nested_module.res:2 [usage]
 → [1-8]        mod 04_nested_module
-→   [1-6]        mod Inner
+    [1-6]        mod Inner
     [8]          fn access
-               let access = () => Inner.nested()
 
 ## tests/fixtures/rescript-matrix/04_nested_module.res:4 [usage]
 → [1-8]        mod 04_nested_module
-→   [1-6]        mod Inner
+    [1-6]        mod Inner
     [8]          fn access
-               let access = () => Inner.nested()
 
 ## tests/fixtures/rescript-matrix/04_nested_module.res:8 [usage]
 → [1-8]        mod 04_nested_module
     [1-6]        mod Inner
-→   [8]          fn access
-               let access = () => Inner.nested()
+    [8]          fn access
 
 ## tests/fixtures/rescript-matrix/05_open_statement.res:4 [usage]
 → [1-6]        mod 05_open_statement
     [1]          import React
     [2]          import Belt
-→   [4-6]        fn render
-               let render = () =>
 
 ## tests/fixtures/rescript-matrix/06_exception.res:4 [usage]
 → [1-10]       mod 06_exception
     [1]          enum ValidationError
     [2]          enum NotFoundError
-→   [4-10]       fn validate
-               let validate = input =>
 
 ... and 12 more matches. Narrow with scope.
 === Search: module ===
@@ -116,7 +95,6 @@ expression: aggregated_output
 → [1-8]        mod 02_type_declarations
     [1]          type color
     [3]          let defaultColor
-→   [5-8]        mod Theme
 
 ## tests/fixtures/rescript-matrix/03_external_declarations.res:4 [usage]
 → [1-5]        mod 03_external_declarations
@@ -125,75 +103,62 @@ expression: aggregated_output
 
 ## tests/fixtures/rescript-matrix/04_nested_module.res:1 [usage]
 → [1-8]        mod 04_nested_module
-→   [1-6]        mod Inner
+    [1-6]        mod Inner
     [8]          fn access
-               let access = () => Inner.nested()
 
 ## tests/fixtures/rescript-matrix/04_nested_module.res:3 [usage]
 → [1-8]        mod 04_nested_module
-→   [1-6]        mod Inner
+    [1-6]        mod Inner
     [8]          fn access
-               let access = () => Inner.nested()
 
 ## tests/fixtures/rescript-matrix/11_dotted_tags.res:11 [usage]
 → [1-19]       mod 11_dotted_tags
     [2-9]        fn make
                let make = () =>
-→   [11-19]      mod MySubComponent
 
 ## tests/fixtures/rescript-matrix/11_dotted_tags.res:15 [usage]
 → [1-19]       mod 11_dotted_tags
     [2-9]        fn make
                let make = () =>
-→   [11-19]      mod MySubComponent
 === Search: exception ===
 # Search: "exception" in tests/fixtures/rescript-matrix — 2 matches
 
 ## tests/fixtures/rescript-matrix/06_exception.res:1 [usage]
 → [1-10]       mod 06_exception
-→   [1]          enum ValidationError
+    [1]          enum ValidationError
     [2]          enum NotFoundError
-    [4-10]       fn validate
-               let validate = input =>
 
 ## tests/fixtures/rescript-matrix/06_exception.res:2 [usage]
 → [1-10]       mod 06_exception
     [1]          enum ValidationError
-→   [2]          enum NotFoundError
-    [4-10]       fn validate
-               let validate = input =>
+    [2]          enum NotFoundError
 === Search: make ===
 # Search: "make" in tests/fixtures/rescript-matrix — 6 matches (3 definitions, 3 usages)
 
-## tests/fixtures/rescript-matrix/09_fragment.res:2 [definition]
+## tests/fixtures/rescript-matrix/09_fragment.res:2-7 [definition]
 → [1-7]        mod 09_fragment
-→   [2-7]        fn make
+    [2-7]        fn make
                let make = (~label) =>
 
-## tests/fixtures/rescript-matrix/10_spread_props.res:2 [definition]
+## tests/fixtures/rescript-matrix/10_spread_props.res:2-4 [definition]
 → [1-8]        mod 10_spread_props
-→   [2-4]        fn make
+    [2-4]        fn make
                let make = (~props) =>
-    [6-8]        fn component2
-               let component2 = (~extraProps) =>
 
-## tests/fixtures/rescript-matrix/11_dotted_tags.res:2 [definition]
+## tests/fixtures/rescript-matrix/11_dotted_tags.res:2-9 [definition]
 → [1-19]       mod 11_dotted_tags
-→   [2-9]        fn make
+    [2-9]        fn make
                let make = () =>
-    [11-19]      mod MySubComponent
 
 ## tests/fixtures/rescript-matrix/11_dotted_tags.res:13 [usage]
 → [1-19]       mod 11_dotted_tags
     [2-9]        fn make
                let make = () =>
-→   [11-19]      mod MySubComponent
 
 ## tests/fixtures/rescript-matrix/11_dotted_tags.res:17 [usage]
 → [1-19]       mod 11_dotted_tags
     [2-9]        fn make
                let make = () =>
-→   [11-19]      mod MySubComponent
 
 ## tests/fixtures/rescript-matrix/12_malformed_jsx.res:2 [usage]
 → [2]   let make = (~label) => {

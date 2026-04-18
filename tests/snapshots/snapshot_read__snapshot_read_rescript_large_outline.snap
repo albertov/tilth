@@ -2,7 +2,7 @@
 source: tests/snapshot_read.rs
 expression: "read_fixture(\"Store.res\")"
 ---
-# ./tests/fixtures/polyglot-project/src/Store.res (279 lines, ~1.6k tokens) [outline]
+# ./tests/fixtures/polyglot-project/src/Store.res (486 lines, ~6.6k tokens) [outline]
 
 [1-278]      mod Store
   [1]          type status
