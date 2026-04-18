@@ -193,15 +193,25 @@ pub fn search_multi_symbol_expanded(
 
     for query in queries {
         let result = symbol::search(query, scope, context, glob)?;
+        let display_matches = dedup_definition_matches(&result.matches);
+        let duplicate_definitions = result.matches.len().saturating_sub(display_matches.len());
+        let display_definitions = result.definitions.saturating_sub(duplicate_definitions);
+        let display_usages = result.usages;
+        let display_total_found = if result.total_found == result.matches.len() {
+            display_matches.len()
+        } else {
+            result.total_found
+        };
+
         let mut out = format::search_header(
             &result.query,
             &result.scope,
-            result.matches.len(),
-            result.definitions,
-            result.usages,
+            display_matches.len(),
+            display_definitions,
+            display_usages,
         );
         format_matches(
-            &result.matches,
+            &display_matches,
             &result.scope,
             cache,
             Some(session),
@@ -210,8 +220,8 @@ pub fn search_multi_symbol_expanded(
             &mut expanded_files,
             &mut out,
         );
-        if result.total_found > result.matches.len() {
-            let omitted = result.total_found - result.matches.len();
+        if display_total_found > display_matches.len() {
+            let omitted = display_total_found - display_matches.len();
             let _ = write!(
                 out,
                 "\n\n... and {omitted} more matches. Narrow with scope."
@@ -376,10 +386,13 @@ type DefKey<'a> = (
     Option<&'a str>,
 );
 
-/// Returns a Vec of groups, where each group is a slice of matches.
-/// Definitions and impl matches are always singleton groups.
-fn group_matches<'a>(matches: &'a [Match], cache: &OutlineCache) -> Vec<Vec<&'a Match>> {
-    let mut groups: Vec<Vec<&Match>> = Vec::new();
+/// Collapse duplicate definition matches that point to the same semantic entry.
+///
+/// Search may emit multiple definition rows for a symbol (e.g. language-specific
+/// signature + body captures). We collapse those before formatting so headers and
+/// rendered entries stay aligned.
+fn dedup_definition_matches(matches: &[Match]) -> Vec<Match> {
+    let mut deduped = Vec::with_capacity(matches.len());
     let mut seen_defs: HashSet<DefKey<'_>> = HashSet::new();
 
     for m in matches {
@@ -395,6 +408,19 @@ fn group_matches<'a>(matches: &'a [Match], cache: &OutlineCache) -> Vec<Vec<&'a 
                 continue;
             }
         }
+
+        deduped.push(m.clone());
+    }
+
+    deduped
+}
+
+/// Returns a Vec of groups, where each group is a slice of matches.
+/// Definitions and impl matches are always singleton groups.
+fn group_matches<'a>(matches: &'a [Match], cache: &OutlineCache) -> Vec<Vec<&'a Match>> {
+    let mut groups: Vec<Vec<&Match>> = Vec::new();
+
+    for m in matches {
         // Definitions and impls are never grouped
         if m.is_definition || m.impl_target.is_some() {
             groups.push(vec![m]);
@@ -849,12 +875,22 @@ fn format_search_result(
     bloom: &crate::index::bloom::BloomFilterCache,
     expand: usize,
 ) -> Result<String, TilthError> {
+    let display_matches = dedup_definition_matches(&result.matches);
+    let duplicate_definitions = result.matches.len().saturating_sub(display_matches.len());
+    let display_definitions = result.definitions.saturating_sub(duplicate_definitions);
+    let display_usages = result.usages;
+    let display_total_found = if result.total_found == result.matches.len() {
+        display_matches.len()
+    } else {
+        result.total_found
+    };
+
     let header = format::search_header(
         &result.query,
         &result.scope,
-        result.matches.len(),
-        result.definitions,
-        result.usages,
+        display_matches.len(),
+        display_definitions,
+        display_usages,
     );
     let mut out = header;
     let mut expand_remaining = expand;
@@ -863,14 +899,14 @@ fn format_search_result(
     // File-level retrieval: when a file basename matches the query exactly,
     // prepend a compact outline so the agent gets file-level context first.
     if let Some(file_outline) =
-        basename_file_outline(&result.query, &result.matches, &result.scope, cache)
+        basename_file_outline(&result.query, &display_matches, &result.scope, cache)
     {
         let _ = write!(out, "\n\n{file_outline}");
     }
 
     // Apply faceting when there are many matches (>5)
-    if result.matches.len() > 5 {
-        let faceted = facets::facet_matches(result.matches.clone(), &result.scope);
+    if display_matches.len() > 5 {
+        let faceted = facets::facet_matches(display_matches.clone(), &result.scope);
 
         // Format each non-empty facet with section headers
         if !faceted.definitions.is_empty() {
@@ -957,7 +993,7 @@ fn format_search_result(
     } else {
         // Linear display for ≤5 matches
         format_matches(
-            &result.matches,
+            &display_matches,
             &result.scope,
             cache,
             session,
@@ -968,8 +1004,8 @@ fn format_search_result(
         );
     }
 
-    if result.total_found > result.matches.len() {
-        let omitted = result.total_found - result.matches.len();
+    if display_total_found > display_matches.len() {
+        let omitted = display_total_found - display_matches.len();
         let _ = write!(
             out,
             "\n\n... and {omitted} more matches. Narrow with scope."

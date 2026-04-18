@@ -2,7 +2,7 @@
 source: tests/snapshot_search.rs
 expression: "search_fixture(\"Button\")"
 ---
-# Search: "Button" in tests/fixtures/polyglot-project — 3 matches (3 definitions, 0 usages)
+# Search: "Button" in tests/fixtures/polyglot-project — 2 matches (2 definitions, 0 usages)
 
 ### File overview: src/Button.res (13 lines)
 [1-13]       mod Button
