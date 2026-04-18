@@ -6,6 +6,7 @@ expression: result
 Dockerfile (~20 tokens)
 Makefile (~22 tokens)
 src/
+  Store.res: Store, status, item, cart, user, action, localStorage_getItem, localStorage_s...
   core.py: Pipeline, __init__, run, create_pipeline
   component.tsx: ButtonProps, Button, Badge
   app.ts: AppConfig, createApp, VERSION
