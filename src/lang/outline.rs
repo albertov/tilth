@@ -15,10 +15,12 @@ pub fn outline_language(lang: Lang) -> Option<tree_sitter::Language> {
         Lang::Cpp => tree_sitter_cpp::LANGUAGE,
         Lang::Ruby => tree_sitter_ruby::LANGUAGE,
         Lang::Php => tree_sitter_php::LANGUAGE_PHP,
-        // Languages without shipped grammars — fall back
         Lang::CSharp => tree_sitter_c_sharp::LANGUAGE,
         Lang::Swift => tree_sitter_swift::LANGUAGE,
         Lang::Kotlin => tree_sitter_kotlin_ng::LANGUAGE,
+        Lang::Haskell => tree_sitter_haskell::LANGUAGE,
+        Lang::ReScript => tree_sitter_rescript::LANGUAGE,
+        // Languages without shipped grammars — fall back
         Lang::Dockerfile | Lang::Make => {
             return None;
         }

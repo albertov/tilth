@@ -539,4 +539,24 @@ mod tests {
         std::env::remove_var("TILTH_FULL_SIZE_CAP");
         let _ = std::fs::remove_file(&path);
     }
+
+    #[test]
+    fn test_detect_haskell_extension() {
+        assert_eq!(
+            detect_file_type(Path::new("Main.hs")),
+            FileType::Code(crate::types::Lang::Haskell)
+        );
+    }
+
+    #[test]
+    fn test_detect_rescript_extensions() {
+        assert_eq!(
+            detect_file_type(Path::new("App.res")),
+            FileType::Code(crate::types::Lang::ReScript)
+        );
+        assert_eq!(
+            detect_file_type(Path::new("Types.resi")),
+            FileType::Code(crate::types::Lang::ReScript)
+        );
+    }
 }

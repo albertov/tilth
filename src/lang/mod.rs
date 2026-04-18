@@ -24,6 +24,8 @@ pub fn detect_file_type(path: &Path) -> FileType {
         Some("swift") => FileType::Code(Lang::Swift),
         Some("kt" | "kts") => FileType::Code(Lang::Kotlin),
         Some("cs") => FileType::Code(Lang::CSharp),
+        Some("hs") => FileType::Code(Lang::Haskell),
+        Some("res" | "resi") => FileType::Code(Lang::ReScript),
 
         Some("md" | "mdx" | "rst") => FileType::Markdown,
         Some("json" | "yaml" | "yml" | "toml" | "xml" | "ini") => FileType::StructuredData,

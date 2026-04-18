@@ -373,4 +373,24 @@ fun main() {
         assert!(outline.contains("fun "), "should use 'fun' not 'fn'");
         assert!(!outline.contains("fn "), "should not use 'fn' for Kotlin");
     }
+
+    #[test]
+    fn test_haskell_grammar_loads() {
+        let lang = outline_language(Lang::Haskell);
+        assert!(lang.is_some(), "Haskell grammar should be available");
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(&lang.unwrap())
+            .expect("Haskell grammar should initialize parser");
+    }
+
+    #[test]
+    fn test_rescript_grammar_loads() {
+        let lang = outline_language(Lang::ReScript);
+        assert!(lang.is_some(), "ReScript grammar should be available");
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(&lang.unwrap())
+            .expect("ReScript grammar should initialize parser");
+    }
 }
