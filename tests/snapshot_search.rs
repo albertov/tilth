@@ -40,6 +40,18 @@ fn snapshot_search_rescript_component() {
 }
 
 #[test]
+fn single_file_scope_search_shows_non_empty_path() {
+    let single_file_scope = Path::new("tests/fixtures/polyglot-project/src/Button.res");
+    let result = search_fixture_in_scope("make", single_file_scope);
+
+    assert!(
+        result.contains("## Button.res:"),
+        "Expected single-file scope results to include a non-empty path.\nActual result:\n{}",
+        result
+    );
+}
+
+#[test]
 fn snapshot_search_rescript_react_component() {
     // "Button" is the React component name (derived from filename)
     insta::assert_snapshot!(search_fixture("Button"));
