@@ -28,7 +28,7 @@ Status legend: `pass` = requirement is covered with concrete evidence, `partial`
 | HASKELL_TREE_SITTER.FR-5 | Import source extraction (best-effort) | `test_haskell_import_source_extraction` | pass |
 | HASKELL_TREE_SITTER.SC-5.1 | Import source extracted | `test_haskell_import_source_extraction` | pass |
 | HASKELL_TREE_SITTER.NFR-1 | No regression in existing languages | `snapshot_read_rust_outline`, `snapshot_read_typescript_outline`, `snapshot_search_rust_function` | pass |
-| HASKELL_TREE_SITTER.EDGE-1 | Empty Haskell file | `test_haskell_empty_file` (pragmas-only still missing) | partial |
+| HASKELL_TREE_SITTER.EDGE-1 | Empty Haskell file | `test_haskell_empty_file`, `test_haskell_pragmas_only` | pass |
 | HASKELL_TREE_SITTER.EDGE-2 | .lhs out of scope | extension dispatch (no `.lhs` mapping) | pass |
 | RESCRIPT_TREE_SITTER.FR-1 | Lang variant and extension detection | `test_detect_rescript_extensions` | pass |
 | RESCRIPT_TREE_SITTER.SC-1.1 | .res extension -> ReScript | `test_detect_rescript_extensions` | pass |
@@ -43,9 +43,9 @@ Status legend: `pass` = requirement is covered with concrete evidence, `partial`
 | RESCRIPT_TREE_SITTER.SC-3.4 | External declarations in outline | `test_rescript_outline_declarations` | pass |
 | RESCRIPT_TREE_SITTER.SC-3.5 | Open statements in outline | `test_rescript_outline_declarations` | pass |
 | RESCRIPT_TREE_SITTER.SC-3.6 | Exception declarations in outline | `test_rescript_outline_declarations` | pass |
-| RESCRIPT_TREE_SITTER.FR-4 | Symbol search definition detection | `test_rescript_symbol_search_definitions`, ReScript search snapshots | partial |
-| RESCRIPT_TREE_SITTER.SC-4.1 | Symbol search finds type definition | `snapshot_search_rescript_type` | partial |
-| RESCRIPT_TREE_SITTER.SC-4.2 | Symbol search finds let binding | `snapshot_search_rescript_component` | partial |
+| RESCRIPT_TREE_SITTER.FR-4 | Symbol search definition detection | `test_rescript_symbol_search_definitions`, ReScript search snapshots | pass |
+| RESCRIPT_TREE_SITTER.SC-4.1 | Symbol search finds type definition | `snapshot_search_rescript_type` | pass |
+| RESCRIPT_TREE_SITTER.SC-4.2 | Symbol search finds let binding | `snapshot_search_rescript_component` | pass |
 | RESCRIPT_TREE_SITTER.SC-4.3 | Symbol search finds module | `snapshot_search_rescript_store_module`, `search_finds_rescript_component_by_module_name` | pass |
 | RESCRIPT_TREE_SITTER.FR-5 | Import source extraction (best-effort) | `test_rescript_open_import_source` | pass |
 | RESCRIPT_TREE_SITTER.SC-5.1 | Open statement source extracted | `test_rescript_open_import_source` | pass |
@@ -60,19 +60,19 @@ Status legend: `pass` = requirement is covered with concrete evidence, `partial`
 | RESCRIPT_TREE_SITTER.SC-7.4 | Nested JSX expressions indexed best-effort | `test_rescript_jsx_component_indexing` | pass |
 | RESCRIPT_TREE_SITTER.SC-7.5 | Non-JSX files remain declaration-only | `test_rescript_non_component_no_jsx_children` | pass |
 | RESCRIPT_TREE_SITTER.NFR-1 | No regression in existing languages | multi-language read/search snapshots | pass |
-| RESCRIPT_TREE_SITTER.EDGE-1 | .resi interface files | `test_detect_rescript_extensions`, `test_rescript_interface_file` | partial |
-| RESCRIPT_TREE_SITTER.SC-E1.1 | Interface file produces outline | `test_rescript_interface_file` | partial |
+| RESCRIPT_TREE_SITTER.EDGE-1 | .resi interface files | `test_detect_rescript_extensions`, `test_rescript_interface_file`, `rescript_interface_file_e2e` | pass |
+| RESCRIPT_TREE_SITTER.SC-E1.1 | Interface file produces outline | `test_rescript_interface_file`, `rescript_interface_file_e2e` | pass |
 | RESCRIPT_TREE_SITTER.EDGE-2 | Decorated declarations | `test_rescript_outline_declarations` decorated external assertion | pass |
 | RESCRIPT_TREE_SITTER.EDGE-3 | Empty ReScript files | `test_rescript_empty_file` | pass |
 | RESCRIPT_TREE_SITTER.EDGE-4 | Malformed JSX subtree | `test_rescript_malformed_jsx_graceful` | pass |
-| RESCRIPT_TREE_SITTER.QA-1 | Fixture matrix + acceptance/integration tests | `snapshot_read_rescript_*`, `snapshot_search_rescript_*` | partial |
+| RESCRIPT_TREE_SITTER.QA-1 | Fixture matrix + acceptance/integration tests | `snapshot_read_rescript_*`, `snapshot_search_rescript_*`, `snapshot_read_rescript_matrix`, `snapshot_search_rescript_matrix` | pass |
 
 ## Spec Adherence
 - [x] Every `HASKELL_TREE_SITTER.FR-*` and `RESCRIPT_TREE_SITTER.FR-*` has at least one linked test
-- [ ] Every `*.SC-*` scenario has an executable test case and a traceable assertion
-- [ ] `*.NFR-*` requirements have measurable verification evidence
-- [ ] `*.EDGE-*` cases have explicit tests (or explicit deferred rationale)
-- [ ] `*.QA-*` quality gates are represented by acceptance/integration test jobs
+- [x] Every `*.SC-*` scenario has an executable test case and a traceable assertion
+- [x] `*.NFR-*` requirements have measurable verification evidence
+- [x] `*.EDGE-*` cases have explicit tests (or explicit deferred rationale)
+- [x] `*.QA-*` quality gates are represented by acceptance/integration test jobs
 
 ## Type Precision
 - [x] Data-model skip remains valid: no new validated domain types or state machines were introduced
@@ -96,7 +96,7 @@ Status legend: `pass` = requirement is covered with concrete evidence, `partial`
 
 ## Build/Test/Lint Gates
 - [x] All tests pass (0 failures, 0 pending)
-- [ ] ReScript 12 fixture matrix (12+ fixtures) passes acceptance/integration runs
+- [x] ReScript 12 fixture matrix (12+ fixtures) passes acceptance/integration runs
 - [x] No new warnings vs baseline
 - [ ] Lint clean
 - [x] Formatted
@@ -115,6 +115,10 @@ Status legend: `pass` = requirement is covered with concrete evidence, `partial`
 | workspace-5fr.8 | completed | Added read/search snapshots to lock user-visible output | n/a |
 | workspace-5fr.9 | completed | Synthetic ReScript module search behavior implemented and validated | n/a |
 | workspace-5fr.10 | completed | Large ReScript fixture added for real outline-mode verification | n/a |
+| workspace-5fr.11 | completed | Expanded ReScript matrix to 12+ fixtures with matrix snapshots | n/a |
+| workspace-5fr.12 | completed | Added Haskell pragmas-only and .resi e2e coverage | n/a |
+| workspace-5fr.13 | completed | Fixed ReScript let/type definition classification in symbol search | n/a |
+| workspace-5fr.14 | completed | Stabilized regression snapshots and closed full-suite gate | n/a |
 
 ## Final Gate (Pre-PR)
 - [ ] Run `openspec-trace-validator` and confirm 100% coverage for all spec codes
