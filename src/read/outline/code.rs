@@ -456,5 +456,9 @@ add x y = x + y
             extract_import_source("import React from \"react\""),
             "react"
         );
+        assert_eq!(
+            extract_import_source("import { useState } from \"react\""),
+            "react"
+        );
     }
 }
