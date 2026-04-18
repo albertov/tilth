@@ -49,3 +49,13 @@ fn snapshot_search_cross_language_function() {
     // "debounce" only exists in utils.js
     insta::assert_snapshot!(search_fixture("debounce"));
 }
+
+#[test]
+fn search_finds_rescript_component_by_module_name() {
+    let result = search_fixture("Button");
+    assert!(
+        result.contains("Button.res"),
+        "Searching for 'Button' should find Button.res (ReScript module name derived from filename).\nActual result:\n{}",
+        result
+    );
+}
