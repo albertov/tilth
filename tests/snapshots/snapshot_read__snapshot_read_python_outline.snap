@@ -1,0 +1,18 @@
+---
+source: tests/snapshot_read.rs
+expression: "read_fixture(\"core.py\")"
+---
+# ./tests/fixtures/polyglot-project/src/core.py (13 lines, ~60 tokens) [full]
+
+class Pipeline:
+    def __init__(self, steps):
+        self.steps = steps
+
+    def run(self, data):
+        for step in self.steps:
+            data = step(data)
+        return data
+
+
+def create_pipeline(*steps):
+    return Pipeline(steps)

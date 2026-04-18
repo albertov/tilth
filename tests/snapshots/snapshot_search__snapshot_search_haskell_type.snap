@@ -1,0 +1,27 @@
+---
+source: tests/snapshot_search.rs
+expression: "search_fixture(\"Token\")"
+---
+# Search: "Token" in tests/fixtures/polyglot-project — 2 matches (1 definitions, 1 usages)
+
+## tests/fixtures/polyglot-project/src/Parser.hs:5 [definition]
+  [3-]   imports: Data.Char
+→ [5]          enum Token
+  [7]          fn tokenize
+             tokenize :: String -> [Token]
+  [8]          fn tokenize
+             tokenize [] = []
+  [9-14]       fn tokenize
+             tokenize (c:cs)
+  [16-17]      interface Parseable
+
+## tests/fixtures/polyglot-project/src/Parser.hs:7 [usage]
+  [3-]   imports: Data.Char
+  [5]          enum Token
+→ [7]          fn tokenize
+             tokenize :: String -> [Token]
+  [8]          fn tokenize
+             tokenize [] = []
+  [9-14]       fn tokenize
+             tokenize (c:cs)
+  [16-17]      interface Parseable

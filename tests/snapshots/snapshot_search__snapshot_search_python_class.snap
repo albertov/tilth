@@ -1,0 +1,23 @@
+---
+source: tests/snapshot_search.rs
+expression: "search_fixture(\"Pipeline\")"
+---
+# Search: "Pipeline" in tests/fixtures/polyglot-project — 2 matches (1 definitions, 1 usages)
+
+## tests/fixtures/polyglot-project/src/core.py:1 [definition]
+→ [1-8]        class Pipeline
+    [2-3]        fn __init__
+               def __init__(self, steps)
+    [5-8]        fn run
+               def run(self, data)
+  [11-12]      fn create_pipeline
+             def create_pipeline(*steps)
+
+## tests/fixtures/polyglot-project/src/core.py:12 [usage]
+  [1-8]        class Pipeline
+    [2-3]        fn __init__
+               def __init__(self, steps)
+    [5-8]        fn run
+               def run(self, data)
+→ [11-12]      fn create_pipeline
+             def create_pipeline(*steps)

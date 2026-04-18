@@ -1,0 +1,20 @@
+---
+source: tests/snapshot_read.rs
+expression: "read_fixture(\"main.rs\")"
+---
+# ./tests/fixtures/polyglot-project/src/main.rs (15 lines, ~44 tokens) [full]
+
+pub struct Config {
+    pub name: String,
+}
+
+pub fn initialize() -> Config {
+    Config {
+        name: String::new(),
+    }
+}
+
+pub enum Status {
+    Active,
+    Inactive,
+}

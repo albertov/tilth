@@ -1,0 +1,18 @@
+---
+source: tests/snapshot_read.rs
+expression: "read_fixture(\"component.tsx\")"
+---
+# ./tests/fixtures/polyglot-project/src/component.tsx (13 lines, ~66 tokens) [full]
+
+type ButtonProps = {
+  label: string;
+  onClick: () => void;
+};
+
+export function Button({ label, onClick }: ButtonProps) {
+  return <button onClick={onClick}>{label}</button>;
+}
+
+export function Badge({ text }: { text: string }) {
+  return <span>{text}</span>;
+}

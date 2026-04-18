@@ -1,0 +1,14 @@
+---
+source: tests/snapshot_search.rs
+expression: "search_fixture(\"color\")"
+---
+# Search: "color" in tests/fixtures/polyglot-project — 1 matches
+
+## tests/fixtures/polyglot-project/src/Button.res:1 [usage]
+→ [1]          type color
+  [3]          let defaultColor
+  [5-8]        mod Theme
+    [5]          mod <module>
+  [11-13]      fn make
+             let make = (~label: string, ~onClick: unit => unit) =>
+    [12]         prop <button>

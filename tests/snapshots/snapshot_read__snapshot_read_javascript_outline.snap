@@ -1,0 +1,22 @@
+---
+source: tests/snapshot_read.rs
+expression: "read_fixture(\"utils.js\")"
+---
+# ./tests/fixtures/polyglot-project/src/utils.js (17 lines, ~75 tokens) [full]
+
+export function debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+export class EventBus {
+  constructor() {
+    this.listeners = {};
+  }
+  on(event, callback) {
+    this.listeners[event] = callback;
+  }
+}

@@ -1,0 +1,19 @@
+---
+source: tests/snapshot_read.rs
+expression: "read_fixture(\"server.go\")"
+---
+# ./tests/fixtures/polyglot-project/src/server.go (14 lines, ~46 tokens) [full]
+
+package server
+
+type Handler struct {
+	Name string
+}
+
+func NewHandler(name string) *Handler {
+	return &Handler{Name: name}
+}
+
+func (h *Handler) ServeHTTP() string {
+	return h.Name
+}
