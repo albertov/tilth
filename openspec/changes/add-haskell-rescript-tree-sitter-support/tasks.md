@@ -1,6 +1,6 @@
 ## 1. Foundation: Language Dispatch + Grammar Wiring
 
-- [ ] 1.1 Add failing coverage for language detection and grammar binding
+- [x] 1.1 Add failing coverage for language detection and grammar binding
   - WHERE: `src/read/mod.rs` tests (new), `src/read/outline/code.rs` tests (new), fixture files under a new ReScript/Haskell fixture directory
   - WHAT: Add RED tests for `.hs`, `.res`, `.resi` detection and `outline_language` binding for `Lang::Haskell`/`Lang::ReScript`
   - WHY: Every later requirement depends on correct language routing and parser availability
@@ -10,7 +10,7 @@
 
 ## 2. Haskell: Outline + Definitions + Imports
 
-- [ ] 2.1 Implement Haskell declaration extraction and symbol definition coverage
+- [x] 2.1 Implement Haskell declaration extraction and symbol definition coverage
   - WHERE: `src/read/outline/code.rs`, `src/search/symbol.rs`, Haskell fixtures/tests
   - WHAT: Add Haskell node mappings (`function`, `bind`, `signature`, `data_type`, `newtype`, `type_synomym`, `class`, `instance`, `foreign_import`), transparent `declarations` descent, and import-source extraction assertions
   - WHY: Haskell capability requires structural outline + symbol definitions with wrapper-aware walking
@@ -20,7 +20,7 @@
 
 ## 3. ReScript Declarations: Outline + Definitions + Imports
 
-- [ ] 3.1 Implement ReScript declaration indexing and decorator-aware extraction
+- [x] 3.1 Implement ReScript declaration indexing and decorator-aware extraction
   - WHERE: `src/read/outline/code.rs`, `src/search/symbol.rs`, ReScript declaration fixtures/tests
   - WHAT: Add `_declaration -> _binding` name extraction, declaration mappings (`let/type/module/external/open/exception`), definition-kind coverage, and `open` source extraction
   - WHY: JSX semantics must build on a correct declaration baseline, especially for `@react.component let make`
@@ -30,7 +30,7 @@
 
 ## 4. ReScript 12 JSX Semantics
 
-- [ ] 4.1 Add JSX-semantic indexing for ReScript 12 component modules
+- [x] 4.1 Add JSX-semantic indexing for ReScript 12 component modules
   - WHERE: `src/read/outline/code.rs`, ReScript JSX fixtures/tests, semantic assertion helpers
   - WHAT: Extract semantic entries from `jsx_element`, `jsx_self_closing_element`, `jsx_fragment`, and spread expressions; attach semantics under owning `@react.component let make` declarations
   - WHY: Chief requirement is MUST-level ReScript 12 support with JSX-semantic indexing
@@ -47,6 +47,7 @@
   - RED: Commit failing acceptance tests for the required fixture classes and expected semantic output snapshots
   - GREEN: Add/normalize fixtures and update implementation until acceptance suite is green
   - GATE: `RESCRIPT_TREE_SITTER.QA-1`
+  - STATUS: Partial. Added integration snapshots and ReScript fixtures (`Button.res`, `Store.res`) but have not reached a 12+ orthogonal ReScript fixture matrix.
 
 ## 6. Regression Gate: Existing Languages + Stability
 
@@ -57,6 +58,7 @@
   - RED: Commit regression checks that fail if existing language behavior drifts
   - GREEN: Resolve regressions and pass full test suite in dev shell
   - GATE: `HASKELL_TREE_SITTER.NFR-1`, `RESCRIPT_TREE_SITTER.NFR-1`
+  - STATUS: Partial. Regression snapshots exist, but current local run has one snapshot mismatch (`snapshot_search_rescript_component`) after ordering drift.
 
 ## Dependency Order
 
