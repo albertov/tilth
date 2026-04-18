@@ -1,10 +1,11 @@
 ---
 source: tests/snapshot_search.rs
+assertion_line: 39
 expression: "search_fixture_in_scope(\"make\", single_file_scope)"
 ---
 # Search: "make" in tests/fixtures/polyglot-project/src/Button.res — 1 matches (1 definitions, 0 usages)
 
-## :11-13 [definition]
+## Button.res:11-13 [definition]
 → [11]   let make = (~label: string, ~onClick: unit => unit) => {
 
-(~50 tokens)
+(~52 tokens)

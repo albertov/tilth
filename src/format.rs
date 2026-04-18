@@ -108,10 +108,30 @@ pub(crate) fn parse_anchor(s: &str) -> Option<(usize, u16)> {
     Some((line, hash))
 }
 
-/// Path relative to scope for cleaner output. Falls back to full path.
+/// Path relative to scope for cleaner output.
+///
+/// If `scope` is a file path and equals `path`, `strip_prefix` returns an
+/// empty path. In that case, fall back to the file name so callers never
+/// render `":<line>"` with a missing path prefix.
 pub(crate) fn rel(path: &Path, scope: &Path) -> String {
-    path.strip_prefix(scope)
-        .unwrap_or(path)
-        .display()
-        .to_string()
+    let rel = path.strip_prefix(scope).unwrap_or(path);
+    if rel.as_os_str().is_empty() {
+        path.file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_else(|| path.display().to_string())
+    } else {
+        rel.display().to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::rel;
+    use std::path::Path;
+
+    #[test]
+    fn rel_uses_filename_when_scope_is_same_file() {
+        let path = Path::new("tests/fixtures/polyglot-project/src/Button.res");
+        assert_eq!(rel(path, path), "Button.res");
+    }
 }
