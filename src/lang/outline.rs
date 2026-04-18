@@ -38,7 +38,15 @@ pub(crate) fn walk_top_level(
     let mut cursor = root.walk();
 
     for child in root.children(&mut cursor) {
-        if let Some(entry) = node_to_entry(child, lines, lang, 0) {
+        // Haskell wraps top-level declarations/imports in container nodes.
+        if matches!(lang, Lang::Haskell) && matches!(child.kind(), "declarations" | "imports") {
+            let mut inner_cursor = child.walk();
+            for inner in child.children(&mut inner_cursor) {
+                if let Some(entry) = node_to_entry(inner, lines, lang, 0) {
+                    entries.push(entry);
+                }
+            }
+        } else if let Some(entry) = node_to_entry(child, lines, lang, 0) {
             entries.push(entry);
         }
     }
@@ -180,6 +188,59 @@ fn node_to_entry(
         | "file_scoped_namespace_declaration" => {
             let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<module>".into());
             (OutlineKind::Module, name, None)
+        }
+
+        // Haskell: functions and type signatures
+        "function" | "bind" | "signature" => {
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
+            let sig = extract_signature(node, lines);
+            (OutlineKind::Function, name, Some(sig))
+        }
+
+        // Haskell: data types
+        "data_type" => {
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
+            (OutlineKind::Enum, name, None)
+        }
+
+        // Haskell: newtype
+        "newtype" => {
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
+            (OutlineKind::Struct, name, None)
+        }
+
+        // Haskell: type alias (grammar typo preserved as `type_synomym`)
+        "type_synomym" | "type_synonym" => {
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
+            (OutlineKind::TypeAlias, name, None)
+        }
+
+        // Haskell: type class
+        "class" => {
+            let name = find_child_text(node, "name", lines).unwrap_or_else(|| "<anonymous>".into());
+            (OutlineKind::Interface, name, None)
+        }
+
+        // Haskell: type class instance
+        "instance" => {
+            let class_name =
+                find_child_text(node, "name", lines).unwrap_or_else(|| "<instance>".into());
+            let type_name = find_child_text(node, "patterns", lines).unwrap_or_default();
+            let display_name = if type_name.is_empty() {
+                class_name
+            } else {
+                format!("{class_name} {type_name}")
+            };
+            (OutlineKind::Class, display_name, None)
+        }
+
+        // Haskell: foreign imports (nested signature child carries name)
+        "foreign_import" => {
+            let name = node
+                .child_by_field_name("signature")
+                .and_then(|sig| find_child_text(sig, "name", lines))
+                .unwrap_or_else(|| node_text(node, lines));
+            (OutlineKind::Import, name, None)
         }
 
         _ => return None,
@@ -369,6 +430,23 @@ pub(crate) fn extract_import_source(text: &str) -> String {
             .to_string();
     }
 
+    // Python: `from module import ...`
+    if let Some(rest) = trimmed.strip_prefix("from ") {
+        return rest.split_whitespace().next().unwrap_or("").to_string();
+    }
+
+    // Haskell: `import [qualified] Module [as Alias] [(items)]`
+    if let Some(rest) = trimmed.strip_prefix("import ") {
+        let rest = rest.strip_prefix("qualified ").unwrap_or(rest).trim();
+        if !rest.contains(" from ") && !rest.contains('"') && !rest.contains('\'') {
+            if let Some(module) = rest.split_whitespace().next() {
+                if module.chars().next().is_some_and(char::is_uppercase) {
+                    return module.to_string();
+                }
+            }
+        }
+    }
+
     // JS/TS: `import ... from "source"` or `import "source"`
     if trimmed.starts_with("import") {
         if let Some(from_pos) = trimmed.find("from ") {
@@ -386,10 +464,7 @@ pub(crate) fn extract_import_source(text: &str) -> String {
             .to_string();
     }
 
-    // Python: `from module import ...` or `import module`
-    if let Some(rest) = trimmed.strip_prefix("from ") {
-        return rest.split_whitespace().next().unwrap_or("").to_string();
-    }
+    // Generic Python-style `import module` (after Haskell + JS handling)
     if let Some(rest) = trimmed.strip_prefix("import ") {
         return rest.split_whitespace().next().unwrap_or("").to_string();
     }

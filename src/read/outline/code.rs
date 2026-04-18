@@ -393,4 +393,68 @@ fun main() {
             .set_language(&lang.unwrap())
             .expect("ReScript grammar should initialize parser");
     }
+
+    #[test]
+    fn test_haskell_outline_declarations() {
+        let source = r#"module Main where
+
+import Data.Map.Strict
+import qualified Data.Text as T
+
+data Color = Red | Green | Blue
+
+newtype Name = Name String
+
+type Alias = String
+
+class Printable a where
+  display :: a -> String
+
+instance Printable Color where
+  display Red = "red"
+
+add :: Int -> Int -> Int
+add x y = x + y
+"#;
+
+        let out = outline(source, Lang::Haskell, 200);
+
+        assert!(out.contains("imports:"), "should collapse imports");
+        assert!(out.contains("Data.Map.Strict"), "should include import source");
+        assert!(out.contains("Data.Text"), "should handle qualified import source");
+        assert!(out.contains("enum Color"), "data type should map to enum");
+        assert!(out.contains("struct Name"), "newtype should map to struct");
+        assert!(out.contains("type Alias"), "type synonym should map to type");
+        assert!(
+            out.contains("interface Printable"),
+            "class should map to interface"
+        );
+        assert!(
+            out.contains("class Printable"),
+            "instance should map to class"
+        );
+        assert!(out.contains("fn add"), "function should map to fn");
+    }
+
+    #[test]
+    fn test_haskell_empty_file() {
+        let out = outline("", Lang::Haskell, 100);
+        assert!(out.is_empty(), "empty Haskell file should produce empty outline");
+    }
+
+    #[test]
+    fn test_haskell_import_source_extraction() {
+        assert_eq!(
+            extract_import_source("import Data.Map.Strict"),
+            "Data.Map.Strict"
+        );
+        assert_eq!(
+            extract_import_source("import qualified Data.Text as T"),
+            "Data.Text"
+        );
+        assert_eq!(
+            extract_import_source("import React from \"react\""),
+            "react"
+        );
+    }
 }
