@@ -576,4 +576,112 @@ external alert: string => unit = \"alert\"
             "should find type declaration in interface source"
         );
     }
+
+    #[test]
+    fn test_rescript_jsx_component_indexing() {
+        let source = r#"@react.component
+let make = (~name: string) => {
+  <div className=\"container\">
+    <h1> {React.string(name)} </h1>
+    <Counter count={1} />
+    <> <span> {React.string(\"fragment\")} </span> </>
+    <Header.Nav items={[\"a\", \"b\"]} />
+    <Button {...props} />
+  </div>
+}
+"#;
+
+        let entries = {
+            let lang_ts = outline_language(Lang::ReScript).unwrap();
+            let mut parser = tree_sitter::Parser::new();
+            parser.set_language(&lang_ts).unwrap();
+            let tree = parser.parse(source, None).unwrap();
+            let root = tree.root_node();
+            let lines: Vec<&str> = source.lines().collect();
+            walk_top_level(root, &lines, Lang::ReScript)
+        };
+
+        assert_eq!(
+            entries.len(),
+            1,
+            "should have one top-level component function"
+        );
+        let component = &entries[0];
+        assert_eq!(component.kind, OutlineKind::Function);
+        assert_eq!(component.name, "make");
+        assert!(
+            !component.children.is_empty(),
+            "component should include JSX child entries"
+        );
+
+        let div = component
+            .children
+            .iter()
+            .find(|c| c.name.contains("div"))
+            .expect("should find <div>");
+
+        assert!(
+            div.children.iter().any(|c| c.name.contains("h1")),
+            "should find nested <h1>"
+        );
+        assert!(
+            div.children.iter().any(|c| c.name.contains("Counter")),
+            "should find self-closing <Counter />"
+        );
+        assert!(
+            div.children.iter().any(|c| c.name.contains("<>...")),
+            "should find fragment"
+        );
+        assert!(
+            div.children.iter().any(|c| c.name.contains("Header.Nav")),
+            "should find dotted JSX tag"
+        );
+        assert!(
+            div.children
+                .iter()
+                .any(|c| c.name.contains("Button") && c.name.contains("...")),
+            "should mark spread props"
+        );
+    }
+
+    #[test]
+    fn test_rescript_non_component_no_jsx_children() {
+        let source = r#"let add = (x, y) => x + y
+
+let render = () => {
+  <div> {React.string(\"not a component\")} </div>
+}
+"#;
+
+        let entries = {
+            let lang_ts = outline_language(Lang::ReScript).unwrap();
+            let mut parser = tree_sitter::Parser::new();
+            parser.set_language(&lang_ts).unwrap();
+            let tree = parser.parse(source, None).unwrap();
+            let root = tree.root_node();
+            let lines: Vec<&str> = source.lines().collect();
+            walk_top_level(root, &lines, Lang::ReScript)
+        };
+
+        for entry in &entries {
+            assert!(
+                entry.children.is_empty(),
+                "non-component '{}' should not include JSX semantic children",
+                entry.name
+            );
+        }
+    }
+
+    #[test]
+    fn test_rescript_malformed_jsx_graceful() {
+        let source = r#"@react.component
+let make = (~name: string) => {
+  <div>
+    <span>
+  </div>
+}
+"#;
+
+        let _ = outline(source, Lang::ReScript, 100);
+    }
 }

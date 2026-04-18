@@ -367,6 +367,22 @@ fn node_to_entry(
         Vec::new()
     };
 
+    // ReScript JSX semantic indexing: @react.component let-functions expose JSX children.
+    let children = if matches!(lang, Lang::ReScript)
+        && node.kind() == "let_declaration"
+        && matches!(kind, OutlineKind::Function)
+    {
+        if node.prev_sibling().is_some_and(|prev| {
+            prev.kind() == "decorator" && node_text(prev, lines).contains("@react.component")
+        }) {
+            collect_jsx_children(node, lines)
+        } else {
+            children
+        }
+    } else {
+        children
+    };
+
     // Extract doc comment if present
     let doc = extract_doc(node, lines);
 
@@ -514,6 +530,116 @@ fn extract_doc(node: tree_sitter::Node, lines: &[&str]) -> Option<String> {
     } else {
         None
     }
+}
+
+/// Collect JSX element children from a ReScript component function.
+fn collect_jsx_children(node: tree_sitter::Node, lines: &[&str]) -> Vec<OutlineEntry> {
+    let mut entries = Vec::new();
+    collect_jsx_recursive(node, lines, &mut entries);
+    entries
+}
+
+fn collect_jsx_recursive(node: tree_sitter::Node, lines: &[&str], entries: &mut Vec<OutlineEntry>) {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        match child.kind() {
+            "jsx_element" => {
+                let tag = jsx_tag_name(child, lines);
+                let mut entry = OutlineEntry {
+                    kind: OutlineKind::Property,
+                    name: format!("<{tag}>"),
+                    start_line: child.start_position().row as u32 + 1,
+                    end_line: child.end_position().row as u32 + 1,
+                    signature: None,
+                    children: Vec::new(),
+                    doc: None,
+                };
+                collect_jsx_recursive(child, lines, &mut entry.children);
+                entries.push(entry);
+            }
+            "jsx_self_closing_element" => {
+                let tag = jsx_self_closing_tag(child, lines);
+                let name = if has_jsx_spread(child) {
+                    format!("<{tag} .../>")
+                } else {
+                    format!("<{tag} />")
+                };
+                entries.push(OutlineEntry {
+                    kind: OutlineKind::Property,
+                    name,
+                    start_line: child.start_position().row as u32 + 1,
+                    end_line: child.end_position().row as u32 + 1,
+                    signature: None,
+                    children: Vec::new(),
+                    doc: None,
+                });
+            }
+            "jsx_fragment" => {
+                let mut entry = OutlineEntry {
+                    kind: OutlineKind::Property,
+                    name: "<>...</>".to_string(),
+                    start_line: child.start_position().row as u32 + 1,
+                    end_line: child.end_position().row as u32 + 1,
+                    signature: None,
+                    children: Vec::new(),
+                    doc: None,
+                };
+                collect_jsx_recursive(child, lines, &mut entry.children);
+                entries.push(entry);
+            }
+            _ => collect_jsx_recursive(child, lines, entries),
+        }
+    }
+}
+
+fn jsx_tag_name(node: tree_sitter::Node, lines: &[&str]) -> String {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "jsx_opening_element" {
+            return jsx_identifier_text(child, lines);
+        }
+    }
+    "unknown".to_string()
+}
+
+fn jsx_self_closing_tag(node: tree_sitter::Node, lines: &[&str]) -> String {
+    jsx_identifier_text(node, lines)
+}
+
+fn jsx_identifier_text(node: tree_sitter::Node, lines: &[&str]) -> String {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        match child.kind() {
+            "nested_jsx_identifier" => {
+                let mut parts = Vec::new();
+                let mut inner_cursor = child.walk();
+                for inner in child.children(&mut inner_cursor) {
+                    if inner.kind() == "jsx_identifier" {
+                        parts.push(node_text(inner, lines));
+                    }
+                }
+                return parts.join(".");
+            }
+            "jsx_identifier" => return node_text(child, lines),
+            _ => {}
+        }
+    }
+    "unknown".to_string()
+}
+
+fn has_jsx_spread(node: tree_sitter::Node) -> bool {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "jsx_expression" {
+            let mut inner = child.walk();
+            for inner_child in child.children(&mut inner) {
+                if inner_child.kind() == "spread_element" {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }
 
 /// Extract the source module name from an import statement text.
