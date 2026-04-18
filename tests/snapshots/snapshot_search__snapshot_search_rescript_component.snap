@@ -1,33 +1,8 @@
 ---
 source: tests/snapshot_search.rs
-expression: "search_fixture(\"make\")"
+expression: "search_fixture_in_scope(\"make\", single_file_scope)"
 ---
-# Search: "make" in tests/fixtures/polyglot-project — 2 matches (2 definitions, 0 usages)
-
-## tests/fixtures/polyglot-project/src/Store.res:236 [definition]
-→ [1-278]      mod Store
-    [1]          type status
-    [3-10]       type item
-    [12-17]      type cart
-    [19-32]      type user
-    [34-46]      type action
-    [48]         fn localStorage_getItem
-    [49]         fn localStorage_setItem
-    [51-56]      let emptyCart
-    [58-64]      let initialState
-    [66-70]      fn calculateTotal
-               let calculateTotal = (items: array<item>): float =>
-    [72-77]      fn applyDiscount
-               let applyDiscount = (total: float, discount: option<float>): float =>
-    [79-86]      fn validateCoupon
-               let validateCoupon = (code: string): option<float> =>
-    [88-169]     fn reducer
-               let reducer = (state: state, action: action): state =>
-    [171-193]    mod Actions
-    [195-218]    mod Selectors
-    [220-233]    mod Persistence
-→   [236-278]    fn make
-               let make = (~initialUser: option<user>=?) =>
+# Search: "make" in tests/fixtures/polyglot-project/src/Button.res — 1 matches (1 definitions, 0 usages)
 
 ## tests/fixtures/polyglot-project/src/Button.res:11 [definition]
 → [1-13]       mod Button
