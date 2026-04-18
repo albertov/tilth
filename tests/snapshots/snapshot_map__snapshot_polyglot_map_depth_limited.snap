@@ -13,7 +13,7 @@ src/
   utils.js: debounce, EventBus
   lib.c (~55 tokens)
   engine.cpp (~62 tokens)
-  Button.res: color, Theme, make
+  Button.res: Button, color, Theme, make
   server.go: NewHandler, ServeHTTP
   main.rs: Config, initialize, Status
   App.java: App, main

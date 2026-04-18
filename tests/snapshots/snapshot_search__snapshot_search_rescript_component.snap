@@ -5,10 +5,9 @@ expression: "search_fixture(\"make\")"
 # Search: "make" in tests/fixtures/polyglot-project — 1 matches
 
 ## tests/fixtures/polyglot-project/src/Button.res:11 [usage]
-  [1]          type color
-  [3]          let defaultColor
-  [5-8]        mod Theme
-    [5]          mod <module>
-→ [11-13]      fn make
-             let make = (~label: string, ~onClick: unit => unit) =>
-    [12]         prop <button>
+→ [1-13]       mod Button
+    [1]          type color
+    [3]          let defaultColor
+    [5-8]        mod Theme
+→   [11-13]      fn make
+               let make = (~label: string, ~onClick: unit => unit) =>

@@ -1,9 +1,10 @@
 use crate::lang::outline::{extract_import_source, outline_language, walk_top_level};
 use crate::types::{Lang, OutlineEntry, OutlineKind};
+use std::path::Path;
 
 /// Generate a code outline using tree-sitter. Walks top-level AST nodes,
 /// emitting signatures without bodies.
-pub fn outline(content: &str, lang: Lang, max_lines: usize) -> String {
+pub fn outline(content: &str, lang: Lang, max_lines: usize, path: Option<&Path>) -> String {
     let Some(language) = outline_language(lang) else {
         return fallback_outline(content, max_lines);
     };
@@ -19,7 +20,25 @@ pub fn outline(content: &str, lang: Lang, max_lines: usize) -> String {
 
     let root = tree.root_node();
     let lines: Vec<&str> = content.lines().collect();
-    let entries = walk_top_level(root, &lines, lang);
+    let mut entries = walk_top_level(root, &lines, lang);
+
+    // ReScript: every .res file is implicitly a module named after the file.
+    // Wrap top-level entries in a synthetic module so symbol search finds
+    // the component by its module name (e.g., searching "Button" finds Button.res).
+    if lang == Lang::ReScript {
+        if let Some(stem) = path.and_then(|p| p.file_stem()).and_then(|s| s.to_str()) {
+            let end_line = entries.last().map_or(0, |e| e.end_line);
+            entries = vec![OutlineEntry {
+                kind: OutlineKind::Module,
+                name: stem.to_string(),
+                start_line: 1,
+                end_line,
+                signature: None,
+                children: entries,
+                doc: None,
+            }];
+        }
+    }
 
     format_entries(&entries, &lines, max_lines, lang)
 }
@@ -241,7 +260,7 @@ enum Color {
 type UserId = String
 "#;
 
-        let outline = outline(scala_code, Lang::Scala, 1000);
+        let outline = outline(scala_code, Lang::Scala, 1000, None);
 
         assert!(outline.contains("trait DataSource"));
         assert!(outline.contains("class Database"));
@@ -277,7 +296,7 @@ class UserService {
 }
 "#;
 
-        let outline = outline(php_code, Lang::Php, 1000);
+        let outline = outline(php_code, Lang::Php, 1000, None);
 
         assert!(outline.contains("mod App\\Services"));
         assert!(outline.contains("imports: App\\Support\\Client"));
@@ -331,7 +350,7 @@ fun main() {
 }
 "#;
 
-        let outline = outline(kotlin_code, Lang::Kotlin, 1000);
+        let outline = outline(kotlin_code, Lang::Kotlin, 1000, None);
 
         // Imports
         assert!(
@@ -417,7 +436,7 @@ add :: Int -> Int -> Int
 add x y = x + y
 "#;
 
-        let out = outline(source, Lang::Haskell, 200);
+        let out = outline(source, Lang::Haskell, 200, None);
 
         assert!(out.contains("imports:"), "should collapse imports");
         assert!(out.contains("Data.Map.Strict"), "should include import source");
@@ -438,8 +457,11 @@ add x y = x + y
 
     #[test]
     fn test_haskell_empty_file() {
-        let out = outline("", Lang::Haskell, 100);
-        assert!(out.is_empty(), "empty Haskell file should produce empty outline");
+        let result = outline("", Lang::Haskell, 100, None);
+        assert!(
+            result.is_empty(),
+            "empty Haskell file should produce empty outline"
+        );
     }
 
     #[test]
@@ -542,8 +564,11 @@ exception NotFound(string)
 
     #[test]
     fn test_rescript_empty_file() {
-        let result = outline("", Lang::ReScript, 100);
-        assert!(result.is_empty(), "empty ReScript file should produce empty outline");
+        let result = outline("", Lang::ReScript, 100, None);
+        assert!(
+            result.is_empty(),
+            "empty ReScript file should produce empty outline"
+        );
     }
 
     #[test]
@@ -682,7 +707,7 @@ let make = (~name: string) => {
 }
 "#;
 
-        let _ = outline(source, Lang::ReScript, 100);
+        let _ = outline(source, Lang::ReScript, 100, None);
     }
 
     // HASKELL_TREE_SITTER.FR-4, SC-4.1, SC-4.2: "Symbol search finds Haskell definitions"

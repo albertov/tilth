@@ -133,7 +133,11 @@ fn find_definitions(
             };
 
             // Fast byte check via memchr::memmem (SIMD) — skip files without the symbol
-            if memchr::memmem::find(content.as_bytes(), needle).is_none() {
+            // Exception: ReScript .res files define implicit modules named by filename, so check
+            // the filename stem even if the symbol doesn't appear in the content.
+            let is_rescript_module = path.extension().and_then(|e| e.to_str()) == Some("res")
+                && path.file_stem().and_then(|s| s.to_str()) == Some(query);
+            if !is_rescript_module && memchr::memmem::find(content.as_bytes(), needle).is_none() {
                 return ignore::WalkState::Continue;
             }
 
@@ -190,7 +194,7 @@ fn find_defs_treesitter(
     let mut parser = tree_sitter::Parser::new();
     if parser.set_language(ts_lang).is_err() {
         return Vec::new();
-    }
+    };
 
     let Some(tree) = parser.parse(content, None) else {
         return Vec::new();
@@ -201,6 +205,34 @@ fn find_defs_treesitter(
     let mut defs = Vec::new();
 
     walk_for_definitions(root, query, path, &lines, file_lines, mtime, &mut defs, 0);
+
+    // ReScript: every .res file is implicitly a module named after the file.
+    // Add a synthetic definition for the module to enable searching by module name.
+    if path.extension().and_then(|e| e.to_str()) == Some("res") {
+        if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+            if stem == query {
+                let end_line = if lines.is_empty() {
+                    1
+                } else {
+                    lines.len() as u32
+                };
+                let text = lines.first().unwrap_or(&"").trim_end().to_string();
+                defs.push(Match {
+                    path: path.to_path_buf(),
+                    line: 1,
+                    text,
+                    is_definition: true,
+                    exact: true,
+                    file_lines,
+                    mtime,
+                    def_range: Some((1, end_line)),
+                    def_name: Some(stem.to_string()),
+                    def_weight: definition_weight("module_declaration"),
+                    impl_target: None,
+                });
+            }
+        }
+    }
 
     defs
 }
