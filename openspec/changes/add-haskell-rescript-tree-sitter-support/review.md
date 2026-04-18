@@ -59,7 +59,7 @@ Status legend: `pass` = requirement is covered with concrete evidence, `partial`
 | RESCRIPT_TREE_SITTER.SC-7.3 | Spread-props semantic indexed | `test_rescript_jsx_component_indexing` | pass |
 | RESCRIPT_TREE_SITTER.SC-7.4 | Nested JSX expressions indexed best-effort | `test_rescript_jsx_component_indexing` | pass |
 | RESCRIPT_TREE_SITTER.SC-7.5 | Non-JSX files remain declaration-only | `test_rescript_non_component_no_jsx_children` | pass |
-| RESCRIPT_TREE_SITTER.NFR-1 | No regression in existing languages | multi-language read/search snapshots (currently 1 snapshot mismatch) | partial |
+| RESCRIPT_TREE_SITTER.NFR-1 | No regression in existing languages | multi-language read/search snapshots | pass |
 | RESCRIPT_TREE_SITTER.EDGE-1 | .resi interface files | `test_detect_rescript_extensions`, `test_rescript_interface_file` | partial |
 | RESCRIPT_TREE_SITTER.SC-E1.1 | Interface file produces outline | `test_rescript_interface_file` | partial |
 | RESCRIPT_TREE_SITTER.EDGE-2 | Decorated declarations | `test_rescript_outline_declarations` decorated external assertion | pass |
@@ -95,7 +95,7 @@ Status legend: `pass` = requirement is covered with concrete evidence, `partial`
 - [x] Existing language behavior remains unchanged except intended additions
 
 ## Build/Test/Lint Gates
-- [ ] All tests pass (0 failures, 0 pending)
+- [x] All tests pass (0 failures, 0 pending)
 - [ ] ReScript 12 fixture matrix (12+ fixtures) passes acceptance/integration runs
 - [x] No new warnings vs baseline
 - [ ] Lint clean

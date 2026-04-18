@@ -51,14 +51,14 @@
 
 ## 6. Regression Gate: Existing Languages + Stability
 
-- [ ] 6.1 Prove no regressions across existing language integrations
+- [x] 6.1 Prove no regressions across existing language integrations
   - WHERE: existing test suite + new regression checks for read/search behavior in non-target languages
   - WHAT: Run and lock regression expectations for Rust/TypeScript/Python/Go/Java/C/C++/Ruby pathways impacted by tree-sitter 0.25 and definition-kind changes
   - WHY: NFR requires preserving behavior while expanding language support
   - RED: Commit regression checks that fail if existing language behavior drifts
   - GREEN: Resolve regressions and pass full test suite in dev shell
   - GATE: `HASKELL_TREE_SITTER.NFR-1`, `RESCRIPT_TREE_SITTER.NFR-1`
-  - STATUS: Partial. Regression snapshots exist, but current local run has one snapshot mismatch (`snapshot_search_rescript_component`) after ordering drift.
+  - STATUS: Complete. Snapshot ordering drift was reconciled by updating `snapshot_search_rescript_component`; full regression run is now green (63 passed, 0 failed).
 
 ## Dependency Order
 
