@@ -6,16 +6,16 @@ expression: result
 Dockerfile (~20 tokens)
 Makefile (~22 tokens)
 src/
-  Store.res: Store, status, item, cart, user, action, localStorage_getItem, localStorage_s...
-  core.py: Pipeline, __init__, run, create_pipeline
-  component.tsx: ButtonProps, Button, Badge
-  app.ts: AppConfig, createApp, VERSION
-  Parser.hs: Token, tokenize, tokenize, tokenize, Parseable
-  utils.js: debounce, EventBus
-  lib.c (~55 tokens)
-  engine.cpp (~62 tokens)
-  Button.res: Button, color, Theme, make
-  server.go: NewHandler, ServeHTTP
-  main.rs: Config, initialize, Status
   App.java: App, main
+  Button.res: Button, color, Theme, make
+  Parser.hs: Token, tokenize, tokenize, tokenize, Parseable
+  Store.res: Store, status, item, cart, user, action, localStorage_getItem, localStorage_s...
+  app.ts: AppConfig, createApp, VERSION
+  component.tsx: ButtonProps, Button, Badge
+  core.py: Pipeline, __init__, run, create_pipeline
+  engine.cpp (~62 tokens)
   helper.rb: StringHelper
+  lib.c (~55 tokens)
+  main.rs: Config, initialize, Status
+  server.go: NewHandler, ServeHTTP
+  utils.js: debounce, EventBus
