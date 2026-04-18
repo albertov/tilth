@@ -42,7 +42,7 @@ fn snapshot_read_rescript_matrix() {
             .to_string_lossy()
             .to_string();
 
-        match tilth::run(&relative_path, scope, None, None, &cache) {
+        match tilth::run(&relative_path, scope, None, None, None, &cache) {
             Ok(output) => {
                 aggregated_output.push_str("=== ");
                 aggregated_output.push_str(&fixture_path.file_name().unwrap().to_string_lossy());
@@ -74,7 +74,7 @@ fn snapshot_search_rescript_matrix() {
 
     let mut aggregated_output = String::new();
     for symbol in symbols {
-        match tilth::run(symbol, scope, None, None, &cache) {
+        match tilth::run(symbol, scope, None, None, None, &cache) {
             Ok(output) => {
                 aggregated_output.push_str("=== Search: ");
                 aggregated_output.push_str(symbol);
@@ -103,7 +103,8 @@ fn rescript_interface_file_e2e() {
     let query = "tests/fixtures/rescript-matrix/Types.resi";
 
     let output =
-        tilth::run(query, scope, None, None, &cache).expect("Should successfully read .resi file");
+        tilth::run(query, scope, None, None, None, &cache)
+            .expect("Should successfully read .resi file");
 
     // Verify outline contains type declarations (expected in interface files)
     assert!(
@@ -129,7 +130,7 @@ fn symbol_search_finds_resi_declarations() {
     let cache = OutlineCache::new();
 
     // Search for a 'user' type that is defined in Types.resi
-    let output = tilth::run("user", scope, None, None, &cache)
+    let output = tilth::run("user", scope, None, None, None, &cache)
         .expect("Should successfully search for type symbol");
 
     assert!(

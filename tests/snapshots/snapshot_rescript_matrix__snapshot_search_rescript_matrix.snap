@@ -5,160 +5,122 @@ expression: aggregated_output
 === Search: type ===
 # Search: "type" in tests/fixtures/rescript-matrix — 6 matches
 
-## tests/fixtures/rescript-matrix/01_decorator.res:2 [usage]
-→ [1-5]        mod 01_decorator
-    [2]          type decoratedType
-    [5]          fn decoratedFunction
+### Usages — other (6)
 
-## tests/fixtures/rescript-matrix/02_type_declarations.res:1 [usage]
-→ [1-8]        mod 02_type_declarations
-    [1]          type color
-    [3]          let defaultColor
+## 02_type_declarations.res:1 [usage]
+→ [1]   type color = Red | Green | Blue
 
-## tests/fixtures/rescript-matrix/Types.resi:1 [usage]
-→ [1-13]       mod Types
-    [3]          type color  // // Interface file for type signatures
-    [4]          type status
+## Types.resi:3 [usage]
+→ [3]   type color = Red | Green | Blue
 
-## tests/fixtures/rescript-matrix/Types.resi:3 [usage]
-→ [1-13]       mod Types
-    [3]          type color  // // Interface file for type signatures
-    [4]          type status
+## Types.resi:4 [usage]
+→ [4]   type status = Active | Inactive | Pending
 
-## tests/fixtures/rescript-matrix/Types.resi:4 [usage]
-→ [1-13]       mod Types
-    [3]          type color  // // Interface file for type signatures
-    [4]          type status
+## Types.resi:6 [usage]
+→ [6]   type user = {
 
-## tests/fixtures/rescript-matrix/Types.resi:6 [usage]
-→ [1-13]       mod Types
-    [3]          type color  // // Interface file for type signatures
-    [4]          type status
+## Types.resi:1 [usage]
+→ [1]   // Interface file for type signatures
+
+## 01_decorator.res:2 [usage]
+→ [2]   type decoratedType = string
+
+(~127 tokens)
 === Search: let ===
 # Search: "let" in tests/fixtures/rescript-matrix — 10 matches
 
-## tests/fixtures/rescript-matrix/01_decorator.res:5 [usage]
-→ [1-5]        mod 01_decorator
-    [2]          type decoratedType
-    [5]          fn decoratedFunction
+### Usages — other (10)
 
-## tests/fixtures/rescript-matrix/02_type_declarations.res:3 [usage]
-→ [1-8]        mod 02_type_declarations
-    [1]          type color
-    [3]          let defaultColor
+## 08_function_let.res:1 [usage]
+→ [1]   let add = (a, b) => a + b
 
-## tests/fixtures/rescript-matrix/02_type_declarations.res:6 [usage]
-→ [1-8]        mod 02_type_declarations
-    [1]          type color
-    [3]          let defaultColor
+## 08_function_let.res:2 [usage]
+→ [2]   let multiply = (x, y) => x * y
 
-## tests/fixtures/rescript-matrix/02_type_declarations.res:7 [usage]
-→ [1-8]        mod 02_type_declarations
-    [1]          type color
-    [3]          let defaultColor
+## 08_function_let.res:3 [usage]
+→ [3]   let greet = name => "Hello, " ++ name ++ "!"
 
-## tests/fixtures/rescript-matrix/03_external_declarations.res:2 [usage]
-→ [1-5]        mod 03_external_declarations
-    [2]          let mathRandom
-    [5]          fn someExternal
+## 01_decorator.res:5 [usage]
+→ [5]   let decoratedFunction = () => "ok"
 
-## tests/fixtures/rescript-matrix/04_nested_module.res:2 [usage]
-→ [1-8]        mod 04_nested_module
-    [1-6]        mod Inner
-    [8]          fn access
+## 02_type_declarations.res:3 [usage]
+→ [3]   let defaultColor = Red
 
-## tests/fixtures/rescript-matrix/04_nested_module.res:4 [usage]
-→ [1-8]        mod 04_nested_module
-    [1-6]        mod Inner
-    [8]          fn access
+## 02_type_declarations.res:6 [usage]
+→ [6]     let primary = "blue"
 
-## tests/fixtures/rescript-matrix/04_nested_module.res:8 [usage]
-→ [1-8]        mod 04_nested_module
-    [1-6]        mod Inner
-    [8]          fn access
+## 02_type_declarations.res:7 [usage]
+→ [7]     let secondary = "gray"
 
-## tests/fixtures/rescript-matrix/05_open_statement.res:4 [usage]
-→ [1-6]        mod 05_open_statement
-    [1]          import React
-    [2]          import Belt
+## 03_external_declarations.res:2 [usage]
+→ [2]   let mathRandom: unit => float = "Math.random"
 
-## tests/fixtures/rescript-matrix/06_exception.res:4 [usage]
-→ [1-10]       mod 06_exception
-    [1]          enum ValidationError
-    [2]          enum NotFoundError
+## 04_nested_module.res:2 [usage]
+→ [2]     let helper = () => "inner"
+
+## 04_nested_module.res:4 [usage]
+→ [4]       let nested = () => "deep"
 
 ... and 12 more matches. Narrow with scope.
+
+(~228 tokens)
 === Search: module ===
 # Search: "module" in tests/fixtures/rescript-matrix — 6 matches
 
-## tests/fixtures/rescript-matrix/02_type_declarations.res:5 [usage]
-→ [1-8]        mod 02_type_declarations
-    [1]          type color
-    [3]          let defaultColor
+### Usages — other (6)
 
-## tests/fixtures/rescript-matrix/03_external_declarations.res:4 [usage]
-→ [1-5]        mod 03_external_declarations
-    [2]          let mathRandom
-    [5]          fn someExternal
+## 04_nested_module.res:1 [usage]
+→ [1]   module Inner = {
 
-## tests/fixtures/rescript-matrix/04_nested_module.res:1 [usage]
-→ [1-8]        mod 04_nested_module
-    [1-6]        mod Inner
-    [8]          fn access
+## 04_nested_module.res:3 [usage]
+→ [3]     module Deep = {
 
-## tests/fixtures/rescript-matrix/04_nested_module.res:3 [usage]
-→ [1-8]        mod 04_nested_module
-    [1-6]        mod Inner
-    [8]          fn access
+## 02_type_declarations.res:5 [usage]
+→ [5]   module Theme = {
 
-## tests/fixtures/rescript-matrix/11_dotted_tags.res:11 [usage]
-→ [1-19]       mod 11_dotted_tags
-    [2-9]        fn make
-               let make = () =>
+## 03_external_declarations.res:4 [usage]
+→ [4]   @send @module("./path/to/module")
 
-## tests/fixtures/rescript-matrix/11_dotted_tags.res:15 [usage]
-→ [1-19]       mod 11_dotted_tags
-    [2-9]        fn make
-               let make = () =>
+## 11_dotted_tags.res:11 [usage]
+→ [11]   module MySubComponent = {
+
+## 11_dotted_tags.res:15 [usage]
+→ [15]     module SubComponent = {
+
+(~128 tokens)
 === Search: exception ===
 # Search: "exception" in tests/fixtures/rescript-matrix — 2 matches
 
-## tests/fixtures/rescript-matrix/06_exception.res:1 [usage]
-→ [1-10]       mod 06_exception
-    [1]          enum ValidationError
-    [2]          enum NotFoundError
+## 06_exception.res:1 [usage]
+→ [1]   exception ValidationError(string)
 
-## tests/fixtures/rescript-matrix/06_exception.res:2 [usage]
-→ [1-10]       mod 06_exception
-    [1]          enum ValidationError
-    [2]          enum NotFoundError
+## 06_exception.res:2 [usage]
+→ [2]   exception NotFoundError
+
+(~53 tokens)
 === Search: make ===
 # Search: "make" in tests/fixtures/rescript-matrix — 6 matches (3 definitions, 3 usages)
 
-## tests/fixtures/rescript-matrix/09_fragment.res:2-7 [definition]
-→ [1-7]        mod 09_fragment
-    [2-7]        fn make
-               let make = (~label) =>
+### Definitions (3)
 
-## tests/fixtures/rescript-matrix/10_spread_props.res:2-4 [definition]
-→ [1-8]        mod 10_spread_props
-    [2-4]        fn make
-               let make = (~props) =>
-
-## tests/fixtures/rescript-matrix/11_dotted_tags.res:2-9 [definition]
-→ [1-19]       mod 11_dotted_tags
-    [2-9]        fn make
-               let make = () =>
-
-## tests/fixtures/rescript-matrix/11_dotted_tags.res:13 [usage]
-→ [1-19]       mod 11_dotted_tags
-    [2-9]        fn make
-               let make = () =>
-
-## tests/fixtures/rescript-matrix/11_dotted_tags.res:17 [usage]
-→ [1-19]       mod 11_dotted_tags
-    [2-9]        fn make
-               let make = () =>
-
-## tests/fixtures/rescript-matrix/12_malformed_jsx.res:2 [usage]
+## 09_fragment.res:2-7 [definition]
 → [2]   let make = (~label) => {
+
+## 10_spread_props.res:2-4 [definition]
+→ [2]   let make = (~props) => {
+
+## 11_dotted_tags.res:2-9 [definition]
+→ [2]   let make = () => {
+
+### Usages — same package (3)
+
+## 11_dotted_tags.res:13 [usage]
+→ [13]     let make = () => <div> {React.string("Sub")} </div>
+
+## 11_dotted_tags.res:17 [usage]
+→ [17]       let make = () => <span> {React.string("Deep nested")} </span>
+
+## 12_malformed_jsx.res:2 [usage]
+→ [2]   let make = (~label) => {
+
+(~161 tokens)

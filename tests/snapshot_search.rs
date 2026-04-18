@@ -3,7 +3,8 @@ use tilth::cache::OutlineCache;
 
 fn search_fixture_in_scope(symbol: &str, scope_path: &Path) -> String {
     let cache = OutlineCache::new();
-    tilth::run(symbol, scope_path, None, None, &cache).expect("search should succeed")
+    tilth::run(symbol, scope_path, None, None, None, &cache)
+        .expect("search should succeed")
 }
 
 fn search_fixture(symbol: &str) -> String {

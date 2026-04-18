@@ -5,7 +5,7 @@ fn read_fixture(filename: &str) -> String {
     let scope = Path::new(".");
     let cache = OutlineCache::new();
     let query = format!("tests/fixtures/polyglot-project/src/{}", filename);
-    tilth::run(&query, scope, None, None, &cache).expect("read should succeed")
+    tilth::run(&query, scope, None, None, None, &cache).expect("read should succeed")
 }
 
 #[test]

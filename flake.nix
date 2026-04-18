@@ -30,6 +30,7 @@
                 "tree-sitter-rescript-0.0.1" = "sha256-A1u3CCJw6Rqsr6SLqVjYIr6spd7prLF4AMmA79N+8tQ=";
               };
             };
+            nativeCheckInputs = [ pkgs.git ];
             meta = {
               inherit (cargoToml.package) description;
               homepage = "https://github.com/jahala/tilth";

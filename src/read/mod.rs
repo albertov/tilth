@@ -442,6 +442,7 @@ fn mime_from_ext(path: &Path) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::Lang;
 
     #[test]
     fn heading_found() {

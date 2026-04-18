@@ -486,17 +486,17 @@ add x y = x + y
 
     #[test]
     fn test_rescript_outline_declarations() {
-        let source = r#"let name = \"hello\"
+        let source = r#"let name = "hello"
 
 let add = (x, y) => x + y
 
 type color = Red | Green | Blue
 
 module Utils = {
-  let helper = () => \"help\"
+  let helper = () => "help"
 }
 
-external alert: string => unit = \"alert\"
+external alert: string => unit = "alert"
 
 open Belt
 
@@ -581,7 +581,7 @@ exception NotFound(string)
     fn test_rescript_interface_file() {
         let source = r#"type color = Red | Green | Blue
 let add: (int, int) => int
-external alert: string => unit = \"alert\"
+external alert: string => unit = "alert"
 "#;
 
         let entries = {
@@ -606,11 +606,11 @@ external alert: string => unit = \"alert\"
     fn test_rescript_jsx_component_indexing() {
         let source = r#"@react.component
 let make = (~name: string) => {
-  <div className=\"container\">
+  <div className="container">
     <h1> {React.string(name)} </h1>
     <Counter count={1} />
-    <> <span> {React.string(\"fragment\")} </span> </>
-    <Header.Nav items={[\"a\", \"b\"]} />
+    <> <span> {React.string("fragment")} </span> </>
+    <Header.Nav items={["a", "b"]} />
     <Button {...props} />
   </div>
 }
@@ -674,7 +674,7 @@ let make = (~name: string) => {
         let source = r#"let add = (x, y) => x + y
 
 let render = () => {
-  <div> {React.string(\"not a component\")} </div>
+  <div> {React.string("not a component")} </div>
 }
 "#;
 

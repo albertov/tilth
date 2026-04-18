@@ -67,9 +67,6 @@ toml = "0.8"
 
 [dev-dependencies]
 insta = "1.41"
-
-
-[dev-dependencies]
 tempfile = "3"
 
 [profile.release]
