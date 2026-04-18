@@ -65,6 +65,9 @@ toml = "0.8"
 # MCP protocol (JSON-RPC over stdio)
 # (handled manually — no framework needed)
 
+[dev-dependencies]
+insta = "1.41"
+
 
 [dev-dependencies]
 tempfile = "3"
