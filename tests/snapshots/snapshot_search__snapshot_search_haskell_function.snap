@@ -2,70 +2,11 @@
 source: tests/snapshot_search.rs
 expression: "search_fixture(\"tokenize\")"
 ---
-# Search: "tokenize" in tests/fixtures/polyglot-project — 6 matches (3 definitions, 3 usages)
+# Search: "tokenize" in tests/fixtures/polyglot-project — 1 matches (1 definitions, 0 usages)
 
 ## tests/fixtures/polyglot-project/src/Parser.hs:7 [definition]
   [3-]   imports: Data.Char
   [5]          enum Token
-→ [7]          fn tokenize
+→ [7-14]       fn tokenize
              tokenize :: String -> [Token]
-  [8]          fn tokenize
-             tokenize [] = []
-  [9-14]       fn tokenize
-             tokenize (c:cs)
-  [16-17]      interface Parseable
-
-## tests/fixtures/polyglot-project/src/Parser.hs:8 [definition]
-  [3-]   imports: Data.Char
-  [5]          enum Token
-  [7]          fn tokenize
-             tokenize :: String -> [Token]
-→ [8]          fn tokenize
-             tokenize [] = []
-  [9-14]       fn tokenize
-             tokenize (c:cs)
-  [16-17]      interface Parseable
-
-## tests/fixtures/polyglot-project/src/Parser.hs:9 [definition]
-  [3-]   imports: Data.Char
-  [5]          enum Token
-  [7]          fn tokenize
-             tokenize :: String -> [Token]
-  [8]          fn tokenize
-             tokenize [] = []
-→ [9-14]       fn tokenize
-             tokenize (c:cs)
-  [16-17]      interface Parseable
-
-## tests/fixtures/polyglot-project/src/Parser.hs:11 [usage]
-  [3-]   imports: Data.Char
-  [5]          enum Token
-  [7]          fn tokenize
-             tokenize :: String -> [Token]
-  [8]          fn tokenize
-             tokenize [] = []
-→ [9-14]       fn tokenize
-             tokenize (c:cs)
-  [16-17]      interface Parseable
-
-## tests/fixtures/polyglot-project/src/Parser.hs:13 [usage]
-  [3-]   imports: Data.Char
-  [5]          enum Token
-  [7]          fn tokenize
-             tokenize :: String -> [Token]
-  [8]          fn tokenize
-             tokenize [] = []
-→ [9-14]       fn tokenize
-             tokenize (c:cs)
-  [16-17]      interface Parseable
-
-## tests/fixtures/polyglot-project/src/Parser.hs:14 [usage]
-  [3-]   imports: Data.Char
-  [5]          enum Token
-  [7]          fn tokenize
-             tokenize :: String -> [Token]
-  [8]          fn tokenize
-             tokenize [] = []
-→ [9-14]       fn tokenize
-             tokenize (c:cs)
   [16-17]      interface Parseable

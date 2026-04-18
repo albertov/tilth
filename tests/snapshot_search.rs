@@ -16,6 +16,16 @@ fn snapshot_search_haskell_function() {
 }
 
 #[test]
+fn haskell_function_query_collapses_duplicate_defs_and_self_usages() {
+    let result = search_fixture("tokenize");
+    assert!(
+        result.contains("— 1 matches (1 definitions, 0 usages)"),
+        "Haskell function search should collapse signature/equation duplicates and ignore self-recursive body usages.\nActual result:\n{}",
+        result
+    );
+}
+
+#[test]
 fn snapshot_search_haskell_type() {
     insta::assert_snapshot!(search_fixture("Token"));
 }

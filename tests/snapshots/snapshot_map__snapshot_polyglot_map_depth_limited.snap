@@ -8,7 +8,7 @@ Makefile (~22 tokens)
 src/
   App.java: App, main
   Button.res: Button, color, Theme, make
-  Parser.hs: Token, tokenize, tokenize, tokenize, Parseable
+  Parser.hs: Token, tokenize, Parseable
   Store.res: Store, status, item, cart, user, action, localStorage_getItem, localStorage_s...
   app.ts: AppConfig, createApp, VERSION
   component.tsx: ButtonProps, Button, Badge
